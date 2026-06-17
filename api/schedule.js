@@ -55,19 +55,17 @@ export default async function handler(req, res) {
       return kwTerms.every(term => title.includes(term));
     });
 
-    const upcoming = filtered
-      .map(item => ({
-        title: item.labang_title,
-        platform: item.platform_name,
-        start: item.labang_datetime_start,
-        end: item.labang_datetime_end,
-        status: item.status,
-        id: item.labang_id,
-        url: buildUrl(item.platform_id, item.pid, item.labang_id),
-      }))
-      .sort((a, b) => a.start.localeCompare(b.start));
+    const debugSample = filtered.slice(0, 5).map(item => ({
+      title: item.labang_title,
+      platform_id: item.platform_id,
+      platform_name: item.platform_name,
+      pid: item.pid,
+      labang_id: item.labang_id,
+      built_url: buildUrl(item.platform_id, item.pid, item.labang_id),
+    }));
 
-    res.status(200).json({ upcoming, total: upcoming.length, keyword });
+    return res.status(200).json({ debug_count: filtered.length, debug_sample: debugSample });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
