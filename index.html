@@ -305,23 +305,8 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
 .card.past {
   background: rgba(245, 223, 77, 0.55);
   color: #5a4d10;
-  border-radius: 28px;
-  padding: 26px 22px 22px;
-  position: relative;
-  overflow: visible;
+  border-radius: 16px;
 }
-.card.past::before, .card.past::after {
-  content: '';
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  height: 16px;
-  background-image: radial-gradient(circle, rgba(245,223,77,0.55) 8px, transparent 8.5px);
-  background-size: 28px 16px;
-  background-repeat: repeat-x;
-}
-.card.past::before { top: -8px; background-position: 0 100%; }
-.card.past::after { bottom: -8px; background-position: 0 0%; }
 
 .card.urgency-live { background: var(--urgency-live); color: #fff; }
 .card.urgency-1 { background: var(--urgency-1); color: #fff; }
