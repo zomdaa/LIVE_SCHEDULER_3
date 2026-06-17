@@ -521,10 +521,10 @@ function upcomingCard(item) {
 }
 
 function pastCard(item) {
-  const d = parseSearchDate(item.date);
+  const d = parseLabangDate(item.start);
   const dt = fmtDate(d);
   const days = daysFromNow(d);
-  const ago = days === null ? '' : `${Math.abs(days)}일 전`;
+  const ago = days === null ? '' : Math.abs(days) + '일 전';
   return `
     <a class="card past" href="${item.url}" target="_blank" rel="noopener">
       <div class="date-col">
@@ -549,11 +549,11 @@ function makeVerdict(upcoming, past) {
   const lastBcast = past[0];
 
   if (!nextBcast) {
-    if (past.length > 0) {
-      const last = parseSearchDate(lastBcast.date);
-      const ago = Math.abs(daysFromNow(last));
-      return `<span class="highlight">예정된 방송이 없습니다ㅠ</span> 현시점 최저가로 구매해보세요! 최근 방송은 ${ago}일 전이었어요 (${lastBcast.platform}).`;
-    }
+  if (past.length > 0) {
+    const last = parseLabangDate(lastBcast.start);
+    const ago = Math.abs(daysFromNow(last));
+    return `<span class="highlight">예정된 방송이 없습니다ㅠ</span> 현시점 최저가로 구매해보세요! 최근 방송은 ${ago}일 전이었어요 (${lastBcast.platform}).`;
+  }
     return `<span class="highlight">예정된 방송이 없습니다ㅠ</span> 현시점 최저가로 구매해보세요!`;
   }
 
