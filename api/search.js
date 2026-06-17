@@ -72,33 +72,13 @@ export default async function handler(req, res) {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    const within30Days = results
-      .filter(item => {
-        const m = item.date.match(/(\d{2})\.(\d{2})\.(\d{2})\s*\([^)]+\)\s*(\d{2}:\d{2})/);
-        if (!m) return false;
-        const d = new Date('20' + m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':00');
-        return d >= thirtyDaysAgo && d <= now;
-      })
-      .sort((a, b) => {
-        const toDate = str => {
-          const m = str.match(/(\d{2})\.(\d{2})\.(\d{2})\s*\([^)]+\)\s*(\d{2}:\d{2})/);
-          return m ? new Date('20' + m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':00') : new Date(0);
-        };
-        return toDate(b.date) - toDate(a.date);
-      })
-      .slice(0, 8);
+    return res.status(200).json({
+      debug_results_count: results.length,
+      debug_first_3: results.slice(0, 3),
+      debug_now: now.toISOString(),
+      debug_30daysago: thirtyDaysAgo.toISOString(),
+    });
 
-    const past = await Promise.all(within30Days.map(async (item) => {
-      const realUrl = await getRealUrl(item.labangId);
-      return {
-        title: item.title,
-        platform: item.platform,
-        date: item.date,
-        url: realUrl || item.labangUrl,
-      };
-    }));
-
-    res.status(200).json({ past, total: past.length, keyword });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
