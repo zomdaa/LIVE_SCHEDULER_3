@@ -14,23 +14,16 @@ export default async function handler(req, res) {
     const yy = String(d.getFullYear()).slice(2);
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
-    dates.push(`${yy}${mm}${dd}`);
+    dates.push(yy + mm + dd);
   }
 
-  async function getRealUrl(labangId) {
-    try {
-      const r = await fetch(`https://live.ecomm-data.com/report/labang/${labangId}`, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'text/html',
-          'Accept-Language': 'ko-KR,ko;q=0.9',
-        },
-      });
-      const html = await r.text();
-      const match = html.match(/"labang_url_info":"([^"]+)"/);
-      return match ? match[1].replace(/\\u0026/g, '&') : null;
-    } catch {
-      return null;
+  function buildUrl(platformId, pid, labangId) {
+    if (!pid) return 'https://live.ecomm-data.com/report/labang/' + labangId;
+    switch (platformId) {
+      case 'kakao': return 'https://shoppinglive.kakao.com/live/' + pid;
+      case 'naver': return 'https://shoppinglive.naver.com/livebridge/' + pid;
+      case '11st':  return 'http://m.11st.co.kr/page/live11/detail?broadcastNo=' + pid;
+      default:      return 'https://live.ecomm-data.com/report/labang/' + labangId;
     }
   }
 
@@ -55,27 +48,26 @@ export default async function handler(req, res) {
     const results = await Promise.all(dates.map(fetchDate));
     const allItems = results.flat();
 
-    const kw = keyword.toLowerCase();
-    const matched = allItems.filter(item =>
-      item.labang_title?.toLowerCase().includes(kw)
-    );
+    const kwTerms = keyword.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    const filtered = allItems.filter(item => {
+      if (!item.labang_title) return false;
+      const title = item.labang_title.toLowerCase();
+      return kwTerms.every(term => title.includes(term));
+    });
 
-    // 각 방송의 실제 URL 병렬로 가져오기
-    const filtered = await Promise.all(matched.map(async (item) => {
-      const realUrl = await getRealUrl(item.labang_id);
-      return {
+    const upcoming = filtered
+      .map(item => ({
         title: item.labang_title,
         platform: item.platform_name,
-        platformId: item.platform_id,
         start: item.labang_datetime_start,
         end: item.labang_datetime_end,
         status: item.status,
         id: item.labang_id,
-        url: realUrl || `https://live.ecomm-data.com/report/labang/${item.labang_id}`,
-      };
-    }));
+        url: buildUrl(item.platform_id, item.pid, item.labang_id),
+      }))
+      .sort((a, b) => a.start.localeCompare(b.start));
 
-    res.status(200).json({ upcoming: filtered, total: filtered.length, keyword });
+    res.status(200).json({ upcoming, total: upcoming.length, keyword });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
