@@ -239,7 +239,7 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
 .verdict-title {
   font-size: 24px;
   font-weight: 800;
-  color: #4a3520;
+  color: var(--primary-deep);
   margin-bottom: 6px;
   line-height: 1.3;
 }
@@ -566,7 +566,7 @@ function upcomingCard(item) {
   } else if (days === 0) {
     badgeHtml = `<div class="badge-box"><span class="badge-num">오늘</span></div>`;
   } else {
-    badgeHtml = `<div class="badge-box"><span class="badge-num">D+${days}</span><span class="badge-unit">${days}일 후</span></div>`;
+    badgeHtml = `<div class="badge-box"><span class="badge-num">D-${days}</span><span class="badge-unit">${days}일 후</span></div>`;
   }
 
   return `
