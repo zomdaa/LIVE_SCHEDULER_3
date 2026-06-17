@@ -290,15 +290,16 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
 
 .card {
   border-radius: 16px;
-  padding: 18px 20px;
+  padding: 16px 18px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 14px;
   text-decoration: none;
   color: inherit;
   transition: transform 0.12s;
   position: relative;
   z-index: 1;
+  min-height: 76px;
 }
 .card:hover { transform: translateY(-2px); }
 
@@ -345,19 +346,56 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
   text-overflow: ellipsis;
 }
 
-.badge {
+.badge-box {
   flex-shrink: 0;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 5px 10px;
-  border-radius: 9999px;
-  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 64px;
+  padding: 10px 12px;
+  border-radius: 14px;
   background: rgba(255,255,255,0.4);
 }
-.badge-live { background: #fff; color: #ea2804; }
-.badge-ended { background: rgba(138,132,122,0.25); color: #6b655d; }
+.card.urgency-live .badge-box, .card.urgency-1 .badge-box { background: rgba(255,255,255,0.25); }
+.badge-box .badge-num {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+}
+.badge-box .badge-unit {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+.badge-live-box { background: #fff; color: #ea2804; }
+.badge-live-box .badge-num { font-size: 13px; letter-spacing: 0.04em; }
+.badge-ended-box { background: rgba(138,132,122,0.18); color: #6b655d; }
 
-.ago-tag { font-size: 10px; opacity: 0.6; flex-shrink: 0; align-self: flex-start; margin-top: 4px; }
+.go-arrow {
+  flex-shrink: 0;
+  font-size: 22px;
+  font-weight: 800;
+  opacity: 0.5;
+  color: inherit;
+}
+
+.ago-box {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 64px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(90,77,16,0.12);
+}
+.ago-box .ago-num { font-size: 20px; font-weight: 800; line-height: 1; }
+.ago-box .ago-unit { font-size: 10px; font-weight: 700; opacity: 0.75; }
 
 .empty {
   text-align: center;
@@ -501,14 +539,18 @@ function upcomingCard(item) {
   const isLive = item.status === 1 && !isEnded;
   const days = daysFromNow(start);
   const urgency = urgencyClass(isLive, isEnded, days);
-  let badge;
+
+  let badgeHtml;
   if (isEnded) {
-    badge = `<span class="badge badge-ended">종료</span>`;
+    badgeHtml = `<div class="badge-box badge-ended-box"><span class="badge-num">종료</span></div>`;
   } else if (isLive) {
-    badge = `<span class="badge badge-live">LIVE</span>`;
+    badgeHtml = `<div class="badge-box badge-live-box"><span class="badge-num">● LIVE</span></div>`;
+  } else if (days === 0) {
+    badgeHtml = `<div class="badge-box"><span class="badge-num">오늘</span></div>`;
   } else {
-    badge = `<span class="badge badge-upcoming">${days === 0 ? '오늘' : days + '일 후'}</span>`;
+    badgeHtml = `<div class="badge-box"><span class="badge-num">D+${days}</span><span class="badge-unit">${days}일 후</span></div>`;
   }
+
   return `
     <a class="card ${urgency}" href="${item.url || '#'}" target="_blank" rel="noopener">
       <div class="date-col">
@@ -521,7 +563,8 @@ function upcomingCard(item) {
         <span class="platform">${item.platform || '라이브'}</span>
         <div class="title">${item.title}</div>
       </div>
-      ${badge}
+      ${badgeHtml}
+      <span class="go-arrow">›</span>
     </a>`;
 }
 
@@ -529,7 +572,7 @@ function pastCard(item) {
   const d = parseLabangDate(item.start);
   const dt = fmtDate(d);
   const days = daysFromNow(d);
-  const ago = days === null ? '' : Math.abs(days) + '일 전';
+  const ago = days === null ? Math.abs(0) : Math.abs(days);
   return `
     <a class="card past" href="${item.url}" target="_blank" rel="noopener">
       <div class="date-col">
@@ -542,7 +585,8 @@ function pastCard(item) {
         <span class="platform">${item.platform}</span>
         <div class="title">${item.title}</div>
       </div>
-      ${ago ? `<span class="ago-tag">${ago}</span>` : ''}
+      <div class="ago-box"><span class="ago-num">${ago}</span><span class="ago-unit">일 전</span></div>
+      <span class="go-arrow">›</span>
     </a>`;
 }
 
