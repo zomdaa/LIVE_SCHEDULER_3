@@ -6,31 +6,27 @@
 <title>라방 타이밍 체크</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2105@1.1/JejuDoldam.css" />
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --canvas: #fffaf0;
-  --surface-soft: #faf5e8;
-  --surface-card: #f5f0e0;
-  --surface-strong: #ebe6d6;
-  --hairline: #e5ded0;
-  --ink: #0a0a0a;
+  --canvas: #f9f7f3;
+  --bone: #f3f0e8;
+  --card: #ffffff;
+  --dark: #202020;
+  --deep: #000000;
+  --ink: #202020;
   --body: #3a3a3a;
-  --muted: #6a6a6a;
-  --muted-soft: #9a9a9a;
-  --pink: #ff4d8b;
-  --pink-text: #7a0030;
-  --teal: #1a3a3a;
-  --lavender: #b8a4ed;
-  --lavender-text: #2e2150;
-  --peach: #ffb084;
-  --peach-text: #5a2a00;
-  --ochre: #e8b94a;
-  --ochre-text: #4a3300;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  --charcoal: #575757;
+  --mute: #646464;
+  --ash: #8d8d8d;
+  --hairline: rgba(32,32,32,0.12);
+  --hairline-strong: #202020;
+  --primary: #ea2804;
+  --primary-deep: #c01f00;
+  --on-dark: #fcfcfc;
+  --on-dark-mute: rgba(252,252,252,0.72);
 }
 
 body {
@@ -40,137 +36,147 @@ body {
   min-height: 100vh;
 }
 
-main { max-width: 720px; margin: 0 auto; padding: 4rem 1.5rem 4rem; }
-
-.hero { text-align: center; margin-bottom: 2.5rem; }
+.hero-band {
+  background: radial-gradient(ellipse 140% 100% at 50% 0%, var(--primary) 0%, #ff6a3d 45%, #f4a8a0 75%, var(--canvas) 100%);
+  padding: 4.5rem 1.5rem 5rem;
+  text-align: center;
+}
 .eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--muted);
-  background: var(--surface-card);
-  padding: 6px 14px;
+  color: #fff;
+  background: rgba(0,0,0,0.18);
+  padding: 7px 16px;
   border-radius: 9999px;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
 }
-.eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ochre); }
+.eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
 
 h1 {
-  font-size: 44px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-  color: var(--ink);
-  margin-bottom: 0.75rem;
+  font-family: 'JejuDoldam', 'Pretendard', sans-serif;
+  font-size: 48px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: #fff;
+  margin-bottom: 1.1rem;
 }
-h1 .accent { color: var(--pink); }
 
 .sub {
   font-size: 16px;
-  color: var(--muted);
+  font-weight: 500;
+  color: rgba(255,255,255,0.88);
   line-height: 1.6;
+  white-space: nowrap;
+  margin: 0 auto;
 }
 
-.search-wrap {
-  display: flex;
-  gap: 8px;
-  margin: 2rem 0 1.5rem;
+main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+
+.search-card {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 20px;
+  margin-top: -3.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 16px 40px rgba(32,32,32,0.14);
 }
+
+.search-wrap { display: flex; gap: 10px; }
 .search-wrap input {
   flex: 1;
-  height: 56px;
+  height: 54px;
   padding: 0 20px;
   font-size: 16px;
   font-family: inherit;
-  background: #fff;
-  border: 1.5px solid var(--hairline);
-  border-radius: var(--radius-md);
+  background: var(--bone);
+  border: none;
+  border-radius: 9999px;
   color: var(--ink);
   outline: none;
-  transition: border-color 0.15s;
 }
-.search-wrap input::placeholder { color: var(--muted-soft); }
-.search-wrap input:focus { border-color: var(--ink); }
+.search-wrap input::placeholder { color: var(--ash); }
+.search-wrap input:focus { box-shadow: 0 0 0 3px rgba(59,130,246,0.35); }
 .search-wrap button {
-  height: 56px;
-  padding: 0 28px;
-  background: var(--ink);
+  height: 54px;
+  padding: 0 30px;
+  background: var(--primary);
   color: #fff;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: 9999px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
-  transition: opacity 0.15s;
+  transition: background 0.15s;
 }
-.search-wrap button:hover { opacity: 0.85; }
+.search-wrap button:hover { background: var(--primary-deep); }
 .search-wrap button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.chips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 2.5rem; }
+.chips { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 .chip {
   font-size: 13px;
-  font-weight: 500;
-  color: var(--muted);
-  background: var(--surface-card);
-  padding: 7px 14px;
+  font-weight: 600;
+  color: var(--charcoal);
+  background: var(--bone);
+  padding: 8px 16px;
   border-radius: 9999px;
   cursor: pointer;
   border: none;
   font-family: inherit;
   transition: background 0.15s;
 }
-.chip:hover { background: var(--surface-strong); }
+.chip:hover { background: var(--hairline); }
 
 .price-link {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  height: 52px;
-  background: var(--lavender);
-  color: var(--lavender-text);
-  border-radius: var(--radius-lg);
+  height: 56px;
+  background: var(--dark);
+  color: var(--on-dark);
+  border-radius: 9999px;
   text-decoration: none;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 1.5rem;
 }
-.price-link:hover { opacity: 0.9; }
+.price-link:hover { background: var(--deep); }
+.price-link .arrow { color: var(--primary); font-weight: 800; }
 
 .verdict {
-  background: var(--peach);
-  border-radius: var(--radius-xl);
-  padding: 24px 28px;
+  background: var(--dark);
+  border-radius: 20px;
+  padding: 26px 28px;
   margin-bottom: 1.5rem;
   display: none;
 }
 .verdict.show { display: block; }
 .verdict-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--peach-text);
-  opacity: 0.7;
-  margin-bottom: 8px;
+  color: var(--primary);
+  margin-bottom: 10px;
 }
 .verdict-text {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 500;
-  color: var(--peach-text);
+  color: var(--on-dark);
   line-height: 1.55;
 }
-.verdict-text .highlight { font-weight: 700; }
+.verdict-text .highlight { color: #ff6a3d; font-weight: 700; }
 
 .status {
   font-size: 13px;
-  color: var(--muted);
+  color: var(--mute);
   margin-bottom: 1rem;
   min-height: 18px;
   display: flex;
@@ -180,7 +186,7 @@ h1 .accent { color: var(--pink); }
 .spinner {
   width: 14px; height: 14px;
   border: 1.5px solid var(--hairline);
-  border-top-color: var(--ink);
+  border-top-color: var(--primary);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -195,39 +201,40 @@ h1 .accent { color: var(--pink); }
   padding: 0 4px;
 }
 .section-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.dot-upcoming { background: var(--teal); }
-.dot-past { background: var(--lavender); }
+.dot-upcoming { background: var(--primary); }
+.dot-past { background: var(--ash); }
 .section-title {
   font-size: 13px;
   font-weight: 700;
-  color: var(--muted);
+  color: var(--charcoal);
 }
 .section-count {
   font-size: 12px;
-  color: var(--muted-soft);
+  color: var(--ash);
   margin-left: auto;
 }
 
-.cards { display: flex; flex-direction: column; gap: 8px; }
+.cards { display: flex; flex-direction: column; gap: 10px; }
 
 .card {
-  border-radius: var(--radius-lg);
-  padding: 16px 18px;
+  border-radius: 16px;
+  padding: 18px 20px;
   display: flex;
   align-items: flex-start;
   gap: 14px;
   text-decoration: none;
   color: inherit;
-  transition: transform 0.1s;
+  transition: transform 0.12s;
 }
-.card:hover { transform: translateY(-1px); }
-.card.upcoming { background: var(--teal); color: #e8f0ed; }
-.card.past { background: var(--surface-card); color: var(--ink); }
+.card:hover { transform: translateY(-2px); }
+.card.upcoming { background: var(--dark); color: var(--on-dark); }
+.card.past { background: var(--card); color: var(--ink); border: 1px solid var(--hairline); }
 
-.date-col { min-width: 46px; text-align: center; flex-shrink: 0; }
-.date-month { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; opacity: 0.65; }
-.date-day { font-size: 24px; font-weight: 700; line-height: 1.15; }
-.date-time { font-size: 10px; opacity: 0.65; margin-top: 2px; }
+.date-col { min-width: 48px; text-align: center; flex-shrink: 0; }
+.date-month { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; opacity: 0.6; }
+.date-day { font-size: 26px; font-weight: 800; line-height: 1.1; }
+.card.upcoming .date-day { color: #ff6a3d; }
+.date-time { font-size: 10px; opacity: 0.6; margin-top: 2px; }
 
 .vline { width: 1px; align-self: stretch; flex-shrink: 0; opacity: 0.15; background: currentColor; }
 
@@ -236,17 +243,17 @@ h1 .accent { color: var(--pink); }
   display: inline-block;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 3px 9px;
+  letter-spacing: 0.03em;
+  padding: 4px 10px;
   border-radius: 9999px;
   margin-bottom: 6px;
 }
-.card.upcoming .platform { background: rgba(255,255,255,0.15); color: #b8e8d8; }
-.card.past .platform { background: var(--ochre); color: var(--ochre-text); }
+.card.upcoming .platform { background: rgba(234,40,4,0.2); color: #ff9b7a; }
+.card.past .platform { background: var(--bone); color: var(--charcoal); }
 
 .title {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -256,19 +263,19 @@ h1 .accent { color: var(--pink); }
   flex-shrink: 0;
   font-size: 10px;
   font-weight: 700;
-  padding: 4px 9px;
+  padding: 5px 10px;
   border-radius: 9999px;
   align-self: flex-start;
 }
-.badge-live { background: var(--pink); color: #fff; }
-.badge-upcoming { background: rgba(255,255,255,0.2); color: #fff; }
+.badge-live { background: var(--primary); color: #fff; }
+.badge-upcoming { background: rgba(255,255,255,0.15); color: #fff; }
 
-.ago-tag { font-size: 10px; opacity: 0.55; flex-shrink: 0; align-self: flex-start; margin-top: 3px; }
+.ago-tag { font-size: 10px; color: var(--ash); flex-shrink: 0; align-self: flex-start; margin-top: 4px; }
 
 .empty {
   text-align: center;
   padding: 3.5rem 1rem;
-  color: var(--muted-soft);
+  color: var(--ash);
   font-size: 14px;
   line-height: 1.8;
 }
@@ -276,34 +283,35 @@ h1 .accent { color: var(--pink); }
 footer {
   text-align: center;
   font-size: 12px;
-  color: var(--muted-soft);
+  color: var(--ash);
   padding: 2rem;
 }
 </style>
 </head>
 <body>
 
+<div class="hero-band">
+  <div class="eyebrow"><span class="dot"></span>라방바 데이터 기반</div>
+  <h1>지금 살까, 방송 기다릴까?</h1>
+  <p class="sub">브랜드명을 검색하면 예정 방송과 지난 방송을 한눈에 비교해드려요</p>
+</div>
+
 <main>
-  <div class="hero">
-    <div class="eyebrow"><span class="dot"></span>라방바 데이터 기반</div>
-    <h1>지금 살까,<br><span class="accent">방송</span> 기다릴까?</h1>
-    <p class="sub">브랜드명을 검색하면 예정 방송과 지난 방송을<br>한눈에 비교해드려요</p>
-  </div>
-
-  <div class="search-wrap">
-    <input type="text" id="input" placeholder="브랜드명을 입력해보세요" />
-    <button id="btn" onclick="doSearch()">검색</button>
-  </div>
-
-  <div class="chips">
-    <button class="chip" onclick="quickSearch('아토팜')">아토팜</button>
-    <button class="chip" onclick="quickSearch('로보락')">로보락</button>
-    <button class="chip" onclick="quickSearch('달바')">달바</button>
-    <button class="chip" onclick="quickSearch('크록스')">크록스</button>
+  <div class="search-card">
+    <div class="search-wrap">
+      <input type="text" id="input" placeholder="브랜드명을 입력해보세요" />
+      <button id="btn" onclick="doSearch()">검색</button>
+    </div>
+    <div class="chips">
+      <button class="chip" onclick="quickSearch('아토팜')">아토팜</button>
+      <button class="chip" onclick="quickSearch('로보락')">로보락</button>
+      <button class="chip" onclick="quickSearch('달바')">달바</button>
+      <button class="chip" onclick="quickSearch('크록스')">크록스</button>
+    </div>
   </div>
 
   <a id="priceBtn" class="price-link" style="display:none" target="_blank" rel="noopener">
-    현재 쿠팡 최저가 확인하기 →
+    현재 쿠팡 최저가 확인하기 <span class="arrow">→</span>
   </a>
 
   <div class="verdict" id="verdict">
