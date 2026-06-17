@@ -17,13 +17,20 @@ export default async function handler(req, res) {
     dates.push(yy + mm + dd);
   }
 
-  function buildUrl(platformId, pid, labangId) {
-    if (!pid) return 'https://live.ecomm-data.com/report/labang/' + labangId;
-    switch (platformId) {
-      case 'kakao': return 'https://shoppinglive.kakao.com/live/' + pid;
-      case 'naver': return 'https://shoppinglive.naver.com/livebridge/' + pid;
-      case '11st':  return 'http://m.11st.co.kr/page/live11/detail?broadcastNo=' + pid;
-      default:      return 'https://live.ecomm-data.com/report/labang/' + labangId;
+  async function getRealUrl(labangId) {
+    try {
+      const r = await fetch('https://live.ecomm-data.com/report/labang/' + labangId, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'text/html',
+          'Accept-Language': 'ko-KR,ko;q=0.9',
+        },
+      });
+      const html = await r.text();
+      const match = html.match(/"labang_url_info":"([^"]+)"/);
+      return match ? match[1].replace(/\\u0026/g, '&') : null;
+    } catch {
+      return null;
     }
   }
 
@@ -49,20 +56,23 @@ export default async function handler(req, res) {
     const allItems = results.flat();
 
     const kw = keyword.toLowerCase();
-    const filtered = allItems
+    const matched = allItems
       .filter(item => item.labang_title && item.labang_title.toLowerCase().includes(kw))
-      .map(item => ({
+      .sort((a, b) => b.labang_datetime_start.localeCompare(a.labang_datetime_start))
+      .slice(0, 3);
+
+    const past = await Promise.all(matched.map(async (item) => {
+      const realUrl = await getRealUrl(item.labang_id);
+      return {
         title: item.labang_title,
         platform: item.platform_name,
         start: item.labang_datetime_start,
         end: item.labang_datetime_end,
-        id: item.labang_id,
-        url: buildUrl(item.platform_id, item.pid, item.labang_id),
-      }))
-      .sort((a, b) => b.start.localeCompare(a.start))
-      .slice(0, 3);
+        url: realUrl || ('https://live.ecomm-data.com/report/labang/' + item.labang_id),
+      };
+    }));
 
-    res.status(200).json({ past: filtered, total: filtered.length, keyword });
+    res.status(200).json({ past, total: past.length, keyword });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
