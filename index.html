@@ -92,6 +92,19 @@ main { max-width: 680px; margin: 0 auto; padding: 0 1rem 4rem; }
 .search-wrap button:hover { opacity: 0.85; }
 .search-wrap button:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.price-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  margin-bottom: 1rem;
+  padding: 8px 0;
+}
+.price-link:hover { text-decoration: underline; }
+
 /* 판단 배너 */
 .verdict {
   background: var(--bg2);
@@ -260,6 +273,8 @@ footer {
     <div class="verdict-text" id="verdictText"></div>
   </div>
 
+  <a id="priceBtn" class="price-link" style="display:none" target="_blank" rel="noopener">현재 쿠팡 최저가 확인하기 ↗</a>
+
   <div class="status" id="status"></div>
   <div id="result">
     <div class="empty">브랜드명을 검색하면<br>예정 방송과 과거 방송을 함께 보여드려요</div>
@@ -285,7 +300,6 @@ function setStatus(msg, loading) {
 }
 
 function parseLabangDate(str) {
-  // "2606170000" 형태 → Date
   if (!str || str.length < 8) return null;
   const yy = str.slice(0, 2), mm = str.slice(2, 4), dd = str.slice(4, 6);
   const hh = str.slice(6, 8), mi = str.slice(8, 10) || '00';
@@ -293,7 +307,6 @@ function parseLabangDate(str) {
 }
 
 function parseSearchDate(str) {
-  // "26.06.16 (화) 10:29" 형태
   const m = str.match(/(\d{2})\.(\d{2})\.(\d{2})\s*\([^)]+\)\s*(\d{2}:\d{2})/);
   if (!m) return null;
   return new Date(`20${m[1]}-${m[2]}-${m[3]}T${m[4]}:00`);
@@ -393,10 +406,10 @@ async function doSearch() {
   btn.disabled = true;
   verdictEl.classList.remove('show');
   resultEl.innerHTML = '';
+  document.getElementById('priceBtn').style.display = 'none';
   setStatus(`"${keyword}" 검색 중…`, true);
 
   try {
-    // 예정 방송 + 과거 방송 병렬 fetch
     const [schedRes, searchRes] = await Promise.all([
       fetch(`/api/schedule?keyword=${encodeURIComponent(keyword)}`),
       fetch(`/api/search?keyword=${encodeURIComponent(keyword)}`),
@@ -411,7 +424,10 @@ async function doSearch() {
     const total = upcoming.length + past.length;
     setStatus(total ? `예정 ${upcoming.length}건 · 과거 ${past.length}건 발견` : '검색 결과가 없어요');
 
-    // 판단 배너
+    const priceBtn = document.getElementById('priceBtn');
+    priceBtn.href = 'https://alltimeprice.com/search/?search=' + encodeURIComponent(keyword);
+    priceBtn.style.display = 'inline-flex';
+
     const verdict = makeVerdict(upcoming, past);
     if (verdict) {
       verdictText.innerHTML = verdict;
