@@ -6,7 +6,14 @@
 <title>라방 타이밍 체크</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2105@1.1/JejuDoldam.css" />
+<style>
+@font-face {
+  font-family: 'JejuStoneWall';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2210-EF@1.0/EF_jejudoldam.woff2') format('woff2');
+  font-weight: normal;
+  font-display: swap;
+}
+</style>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -27,6 +34,13 @@
   --primary-deep: #c01f00;
   --on-dark: #fcfcfc;
   --on-dark-mute: rgba(252,252,252,0.72);
+
+  --urgency-live: linear-gradient(135deg, #ff3d2e 0%, #ea2804 100%);
+  --urgency-1: linear-gradient(135deg, #ff7a45 0%, #ff5722 100%);
+  --urgency-2: linear-gradient(135deg, #ffa45c 0%, #ff8a3d 100%);
+  --urgency-3: linear-gradient(135deg, #ffc98a 0%, #ffaf5e 100%);
+  --urgency-4: linear-gradient(135deg, #ffe4bf 0%, #ffd29c 100%);
+  --past-gradient: linear-gradient(135deg, #3b3470 0%, #1f1b42 100%);
 }
 
 body {
@@ -38,9 +52,21 @@ body {
 
 .hero-band {
   background: radial-gradient(ellipse 140% 100% at 50% 0%, var(--primary) 0%, #ff6a3d 45%, #f4a8a0 75%, var(--canvas) 100%);
-  padding: 4.5rem 1.5rem 5rem;
+  padding: 3.25rem 1.5rem 4.5rem;
   text-align: center;
+  position: relative;
+  overflow: hidden;
 }
+.hero-deco {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.16;
+  pointer-events: none;
+}
+.hero-deco.left { left: -40px; }
+.hero-deco.right { right: -40px; transform: translateY(-50%) scaleX(-1); }
+.hero-content { position: relative; z-index: 1; }
 .eyebrow {
   display: inline-flex;
   align-items: center;
@@ -51,18 +77,18 @@ body {
   background: rgba(0,0,0,0.18);
   padding: 7px 16px;
   border-radius: 9999px;
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.25rem;
 }
 .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
 
 h1 {
-  font-family: 'JejuDoldam', 'Pretendard', sans-serif;
-  font-size: 48px;
+  font-family: 'JejuStoneWall', 'Pretendard', sans-serif;
+  font-size: 40px;
   font-weight: 400;
   letter-spacing: -0.01em;
   line-height: 1.15;
   color: #fff;
-  margin-bottom: 1.1rem;
+  margin-bottom: 0.85rem;
 }
 
 .sub {
@@ -74,15 +100,36 @@ h1 {
   margin: 0 auto;
 }
 
-main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relative; }
+
+.side-deco {
+  position: absolute;
+  top: 280px;
+  width: 280px;
+  opacity: 0.28;
+  pointer-events: none;
+  z-index: -1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.side-deco.left { left: -260px; }
+.side-deco.right { right: -260px; }
+.side-deco img { width: 100%; display: block; border-radius: 24px; }
+
+@media (max-width: 1300px) {
+  .side-deco { display: none; }
+}
 
 .search-card {
   background: var(--card);
   border-radius: 20px;
   padding: 20px;
-  margin-top: -3.5rem;
+  margin-top: -2rem;
   margin-bottom: 1.25rem;
   box-shadow: 0 16px 40px rgba(32,32,32,0.14);
+  position: relative;
+  z-index: 1;
 }
 
 .search-wrap { display: flex; gap: 10px; }
@@ -146,6 +193,8 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; }
   font-size: 15px;
   font-weight: 700;
   margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 1;
 }
 .price-link:hover { background: var(--deep); }
 .price-link .arrow { color: var(--primary); font-weight: 800; }
@@ -156,6 +205,8 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; }
   padding: 26px 28px;
   margin-bottom: 1.5rem;
   display: none;
+  position: relative;
+  z-index: 1;
 }
 .verdict.show { display: block; }
 .verdict-label {
@@ -182,6 +233,8 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; }
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
+  z-index: 1;
 }
 .spinner {
   width: 14px; height: 14px;
@@ -202,7 +255,7 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; }
 }
 .section-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .dot-upcoming { background: var(--primary); }
-.dot-past { background: var(--ash); }
+.dot-past { background: #3b3470; }
 .section-title {
   font-size: 13px;
   font-weight: 700;
@@ -225,18 +278,25 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; }
   text-decoration: none;
   color: inherit;
   transition: transform 0.12s;
+  position: relative;
+  z-index: 1;
 }
 .card:hover { transform: translateY(-2px); }
-.card.upcoming { background: var(--dark); color: var(--on-dark); }
-.card.past { background: var(--card); color: var(--ink); border: 1px solid var(--hairline); }
+
+.card.past { background: var(--past-gradient); color: #e8e4f5; }
+
+.card.urgency-live { background: var(--urgency-live); color: #fff; }
+.card.urgency-1 { background: var(--urgency-1); color: #fff; }
+.card.urgency-2 { background: var(--urgency-2); color: #4a2a00; }
+.card.urgency-3 { background: var(--urgency-3); color: #5a3a10; }
+.card.urgency-4 { background: var(--urgency-4); color: #6b4520; }
 
 .date-col { min-width: 48px; text-align: center; flex-shrink: 0; }
-.date-month { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; opacity: 0.6; }
+.date-month { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; opacity: 0.7; }
 .date-day { font-size: 26px; font-weight: 800; line-height: 1.1; }
-.card.upcoming .date-day { color: #ff6a3d; }
-.date-time { font-size: 10px; opacity: 0.6; margin-top: 2px; }
+.date-time { font-size: 10px; opacity: 0.7; margin-top: 2px; }
 
-.vline { width: 1px; align-self: stretch; flex-shrink: 0; opacity: 0.15; background: currentColor; }
+.vline { width: 1px; align-self: stretch; flex-shrink: 0; opacity: 0.2; background: currentColor; }
 
 .info { flex: 1; min-width: 0; }
 .platform {
@@ -247,9 +307,10 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; }
   padding: 4px 10px;
   border-radius: 9999px;
   margin-bottom: 6px;
+  background: rgba(255,255,255,0.35);
 }
-.card.upcoming .platform { background: rgba(234,40,4,0.2); color: #ff9b7a; }
-.card.past .platform { background: var(--bone); color: var(--charcoal); }
+.card.urgency-2 .platform, .card.urgency-3 .platform, .card.urgency-4 .platform { background: rgba(255,255,255,0.45); }
+.card.past .platform { background: rgba(255,255,255,0.15); color: #cfc6ec; }
 
 .title {
   font-size: 14px;
@@ -266,11 +327,11 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; }
   padding: 5px 10px;
   border-radius: 9999px;
   align-self: flex-start;
+  background: rgba(255,255,255,0.4);
 }
-.badge-live { background: var(--primary); color: #fff; }
-.badge-upcoming { background: rgba(255,255,255,0.15); color: #fff; }
+.badge-live { background: #fff; color: #ea2804; }
 
-.ago-tag { font-size: 10px; color: var(--ash); flex-shrink: 0; align-self: flex-start; margin-top: 4px; }
+.ago-tag { font-size: 10px; opacity: 0.6; flex-shrink: 0; align-self: flex-start; margin-top: 4px; }
 
 .empty {
   text-align: center;
@@ -278,6 +339,9 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; }
   color: var(--ash);
   font-size: 14px;
   line-height: 1.8;
+  position: relative;
+  z-index: 1;
+  background: var(--canvas);
 }
 
 footer {
@@ -291,12 +355,23 @@ footer {
 <body>
 
 <div class="hero-band">
+  <div class="hero-content">
   <div class="eyebrow"><span class="dot"></span>라방바 데이터 기반</div>
   <h1>지금 살까, 방송 기다릴까?</h1>
   <p class="sub">브랜드명을 검색하면 예정 방송과 지난 방송을 한눈에 비교해드려요</p>
+  </div>
 </div>
 
 <main>
+  <div class="side-deco left">
+    <img src="https://i.imgur.com/tpl2tbc.jpeg" alt="" />
+    <img src="https://i.imgur.com/gk9Mlqh.jpeg" alt="" />
+  </div>
+  <div class="side-deco right">
+    <img src="https://i.imgur.com/l7Ia9i2.jpeg" alt="" />
+    <img src="https://i.imgur.com/gpodY9i.jpeg" alt="" />
+  </div>
+
   <div class="search-card">
     <div class="search-wrap">
       <input type="text" id="input" placeholder="브랜드명을 입력해보세요" />
@@ -376,16 +451,25 @@ function daysFromNow(d) {
   return Math.round((d - new Date()) / (1000 * 60 * 60 * 24));
 }
 
+function urgencyClass(isLive, days) {
+  if (isLive) return 'urgency-live';
+  if (days <= 1) return 'urgency-1';
+  if (days <= 3) return 'urgency-2';
+  if (days <= 7) return 'urgency-3';
+  return 'urgency-4';
+}
+
 function upcomingCard(item) {
   const start = parseLabangDate(item.start);
   const dt = fmtDate(start);
   const isLive = item.status === 1;
   const days = daysFromNow(start);
+  const urgency = urgencyClass(isLive, days);
   const badge = isLive
     ? `<span class="badge badge-live">LIVE</span>`
     : `<span class="badge badge-upcoming">${days === 0 ? '오늘' : days + '일 후'}</span>`;
   return `
-    <a class="card upcoming" href="${item.url || '#'}" target="_blank" rel="noopener">
+    <a class="card ${urgency}" href="${item.url || '#'}" target="_blank" rel="noopener">
       <div class="date-col">
         <div class="date-month">${dt.month}</div>
         <div class="date-day">${dt.day}</div>
