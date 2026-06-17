@@ -8,7 +8,7 @@ export default async function handler(req, res) {
 
   const dates = [];
   const now = new Date();
-  for (let i = 1; i <= 30; i++) {
+  for (let i = 1; i <= 60; i++) {
     const d = new Date(now);
     d.setDate(now.getDate() - i);
     const yy = String(d.getFullYear()).slice(2);
@@ -60,7 +60,7 @@ export default async function handler(req, res) {
         url: buildUrl(item.platform_id, item.pid, item.labang_id),
       }))
       .sort((a, b) => b.start.localeCompare(a.start))
-      .slice(0, 10);
+      .slice(0, 3);
 
     res.status(200).json({ past: filtered, total: filtered.length, keyword });
   } catch (err) {
