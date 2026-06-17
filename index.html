@@ -548,27 +548,27 @@ function makeVerdict(upcoming, past) {
   }) || upcoming[0];
   const lastBcast = past[0];
 
-  if (upcoming.length === 0 && past.length === 0) return null;
-
-  if (nextBcast) {
-    const start = parseLabangDate(nextBcast.start);
-    const days = daysFromNow(start);
-    if (days <= 3) {
-      return `<span class="highlight">잠깐 기다리세요!</span> ${days === 0 ? '오늘' : days + '일 후'} ${nextBcast.platform}에서 방송 예정이에요. 방송 혜택 확인 후 구매를 추천해요.`;
-    } else if (days <= 7) {
-      return `${days}일 후 방송이 있어요 (${nextBcast.platform}). 급하지 않다면 기다려볼 만해요.`;
-    } else {
-      return `가장 가까운 방송까지 <span class="highlight">${days}일</span> 남았어요. 급하면 지금 구매, 여유 있으면 기다려보세요.`;
+  if (!nextBcast) {
+    if (past.length > 0) {
+      const last = parseSearchDate(lastBcast.date);
+      const ago = Math.abs(daysFromNow(last));
+      return `<span class="highlight">예정된 방송이 없습니다ㅠ</span> 현시점 최저가로 구매해보세요! 최근 방송은 ${ago}일 전이었어요 (${lastBcast.platform}).`;
     }
+    return `<span class="highlight">예정된 방송이 없습니다ㅠ</span> 현시점 최저가로 구매해보세요!`;
   }
 
-  if (past.length > 0) {
-    const last = parseSearchDate(lastBcast.date);
-    const ago = Math.abs(daysFromNow(last));
-    return `예정된 방송 정보가 없어요. 최근 방송은 <span class="highlight">${ago}일 전</span>이었어요 (${lastBcast.platform}).`;
-  }
+  const start = parseLabangDate(nextBcast.start);
+  const days = daysFromNow(start);
 
-  return null;
+  if (days === 0) {
+    return `<span class="highlight">구매 타이밍 야~호~~</span> 오늘 ${nextBcast.platform}에서 방송 예정이에요. 방송 혜택 확인 후 구매를 추천해요.`;
+  } else if (days <= 3) {
+    return `<span class="highlight">맛떼루용~~</span> ${days}일 후 ${nextBcast.platform}에서 방송 예정이에요. 방송 혜택 확인 후 구매를 추천해요.`;
+  } else if (days <= 7) {
+    return `<span class="highlight">맛떼루용~~</span> ${days}일 후 방송이 있어요 (${nextBcast.platform}). 급하지 않다면 기다려볼 만해요.`;
+  } else {
+    return `<span class="highlight">맛떼루용~~</span> 가장 가까운 방송까지 ${days}일 남았어요. 급하면 지금 구매, 여유 있으면 기다려보세요.`;
+  }
 }
 
 async function doSearch() {
@@ -609,6 +609,8 @@ async function doSearch() {
     if (verdict) {
       verdictText.innerHTML = verdict;
       verdictEl.classList.add('show');
+    } else {
+      verdictEl.classList.remove('show');
     }
 
     let html = '';
