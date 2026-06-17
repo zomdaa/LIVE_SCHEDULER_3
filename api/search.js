@@ -69,7 +69,16 @@ export default async function handler(req, res) {
       });
     }
 
-    const top2 = results
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const within30Days = results
+      .filter(item => {
+        const m = item.date.match(/(\d{2})\.(\d{2})\.(\d{2})\s*\([^)]+\)\s*(\d{2}:\d{2})/);
+        if (!m) return false;
+        const d = new Date('20' + m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':00');
+        return d >= thirtyDaysAgo && d <= now;
+      })
       .sort((a, b) => {
         const toDate = str => {
           const m = str.match(/(\d{2})\.(\d{2})\.(\d{2})\s*\([^)]+\)\s*(\d{2}:\d{2})/);
@@ -77,9 +86,9 @@ export default async function handler(req, res) {
         };
         return toDate(b.date) - toDate(a.date);
       })
-      .slice(0, 2);
+      .slice(0, 8);
 
-    const past = await Promise.all(top2.map(async (item) => {
+    const past = await Promise.all(within30Days.map(async (item) => {
       const realUrl = await getRealUrl(item.labangId);
       return {
         title: item.title,
