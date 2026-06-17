@@ -58,9 +58,13 @@ export default async function handler(req, res) {
     const results = await Promise.all(dates.map(fetchDate));
     const allItems = results.flat();
 
-    const kw = keyword.toLowerCase();
+    const kwTerms = keyword.toLowerCase().trim().split(/\s+/).filter(Boolean);
     const matched = allItems
-      .filter(item => item.labang_title && item.labang_title.toLowerCase().includes(kw))
+      .filter(item => {
+        if (!item.labang_title) return false;
+        const title = item.labang_title.toLowerCase();
+        return kwTerms.every(term => title.includes(term));
+      })
       .sort((a, b) => b.labang_datetime_start.localeCompare(a.labang_datetime_start))
       .slice(0, 3);
 
