@@ -428,7 +428,7 @@ footer {
 
 <div class="hero-band">
   <div class="hero-content">
-  <div class="eyebrow"><span class="dot"></span>라방바 데이터 기반</div>
+  <div class="eyebrow"><span class="dot"></span><span id="todayDate"></span></div>
   <h1>지금 살까, 방송 기다릴까?</h1>
   <p class="sub">브랜드명을 검색하면 예정 방송과 지난 방송을 한눈에 비교해드려요</p>
   </div>
@@ -490,6 +490,15 @@ footer {
 <footer>데이터 출처: 라방바 데이터랩</footer>
 
 <script>
+const todayDateEl = document.getElementById('todayDate');
+if (todayDateEl) {
+  const today = new Date();
+  const yy = String(today.getFullYear()).slice(2);
+  const mm = today.getMonth() + 1;
+  const dd = today.getDate();
+  todayDateEl.textContent = `${yy}. ${mm}. ${dd}`;
+}
+
 const input = document.getElementById('input');
 const btn = document.getElementById('btn');
 const statusEl = document.getElementById('status');
