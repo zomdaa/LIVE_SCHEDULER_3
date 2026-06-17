@@ -191,11 +191,14 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
 .chip:hover { background: var(--hairline); }
 
 .price-row { display: flex; gap: 10px; margin-bottom: 1.5rem; }
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   .price-row { flex-direction: column; }
   .brand-title { font-size: 38px; }
   h1 { font-size: 22px; }
   .sub { white-space: normal; }
+  .search-wrap { flex-direction: column; }
+  .search-wrap input, .search-wrap button { width: 100%; }
+  .search-wrap button { margin-top: 4px; }
 }
 .price-link {
   display: flex;
@@ -476,8 +479,8 @@ footer {
   <div class="price-row">
     <a id="priceBtn" class="price-link coupang" style="display:none" target="_blank" rel="noopener">
       <svg class="brand-logo" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <rect x="2" y="9" width="20" height="11" rx="2" fill="#fff"/>
-        <path d="M5 9V6.5C5 4.01 7.01 2 9.5 2H14.5C16.99 2 19 4.01 19 6.5V9" stroke="#fff" stroke-width="2"/>
+        <path d="M6 8H18L19 21H5L6 8Z" fill="#fff"/>
+        <path d="M8.5 8V6C8.5 4.067 10.067 2.5 12 2.5C13.933 2.5 15.5 4.067 15.5 6V8" stroke="#fff" stroke-width="1.6" fill="none"/>
       </svg>
       쿠팡 최저가 확인하기 <span class="arrow">→</span>
     </a>
