@@ -4,276 +4,312 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>라방 타이밍 체크</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #0f0f0f;
-  --bg2: #1a1a1a;
-  --bg3: #242424;
-  --text: #f0ede8;
-  --text2: #888;
-  --text3: #555;
-  --accent: #FFD84D;
-  --accent2: #FFF0A0;
-  --upcoming: #1a2a1a;
-  --upcoming-border: #2d4a2d;
-  --upcoming-text: #7ec87e;
-  --past: #1a1a2a;
-  --past-border: #2d2d4a;
-  --border: rgba(255,255,255,0.08);
-  --radius: 14px;
+  --canvas: #fffaf0;
+  --surface-soft: #faf5e8;
+  --surface-card: #f5f0e0;
+  --surface-strong: #ebe6d6;
+  --hairline: #e5ded0;
+  --ink: #0a0a0a;
+  --body: #3a3a3a;
+  --muted: #6a6a6a;
+  --muted-soft: #9a9a9a;
+  --pink: #ff4d8b;
+  --pink-text: #7a0030;
+  --teal: #1a3a3a;
+  --lavender: #b8a4ed;
+  --lavender-text: #2e2150;
+  --peach: #ffb084;
+  --peach-text: #5a2a00;
+  --ochre: #e8b94a;
+  --ochre-text: #4a3300;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
 }
 
 body {
-  font-family: 'Apple SD Gothic Neo', -apple-system, 'Noto Sans KR', sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
   min-height: 100vh;
 }
 
-header {
-  padding: 2rem 1.5rem 1.5rem;
-  max-width: 680px;
-  margin: 0 auto;
-}
-.logo {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 0.4rem;
-}
-.tagline {
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--text);
-  line-height: 1.3;
-}
-.tagline span { color: var(--accent); }
+main { max-width: 720px; margin: 0 auto; padding: 4rem 1.5rem 4rem; }
 
-main { max-width: 680px; margin: 0 auto; padding: 0 1rem 4rem; }
-
-.search-wrap {
-  display: flex;
-  gap: 8px;
-  margin: 1.5rem 0 2rem;
-}
-.search-wrap input {
-  flex: 1;
-  height: 50px;
-  padding: 0 16px;
-  font-size: 16px;
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text);
-  outline: none;
-  font-family: inherit;
-  transition: border-color 0.2s;
-}
-.search-wrap input::placeholder { color: var(--text3); }
-.search-wrap input:focus { border-color: var(--accent); }
-.search-wrap button {
-  height: 50px;
-  padding: 0 24px;
-  background: var(--accent);
-  color: #0f0f0f;
-  border: none;
-  border-radius: var(--radius);
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-  transition: opacity 0.15s;
-  white-space: nowrap;
-}
-.search-wrap button:hover { opacity: 0.85; }
-.search-wrap button:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.price-link {
+.hero { text-align: center; margin-bottom: 2.5rem; }
+.eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--accent);
-  text-decoration: none;
-  margin-bottom: 1rem;
-  padding: 8px 0;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  background: var(--surface-card);
+  padding: 6px 14px;
+  border-radius: 9999px;
+  margin-bottom: 1.5rem;
 }
-.price-link:hover { text-decoration: underline; }
+.eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ochre); }
 
-/* 판단 배너 */
+h1 {
+  font-size: 44px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--ink);
+  margin-bottom: 0.75rem;
+}
+h1 .accent { color: var(--pink); }
+
+.sub {
+  font-size: 16px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.search-wrap {
+  display: flex;
+  gap: 8px;
+  margin: 2rem 0 1.5rem;
+}
+.search-wrap input {
+  flex: 1;
+  height: 56px;
+  padding: 0 20px;
+  font-size: 16px;
+  font-family: inherit;
+  background: #fff;
+  border: 1.5px solid var(--hairline);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.search-wrap input::placeholder { color: var(--muted-soft); }
+.search-wrap input:focus { border-color: var(--ink); }
+.search-wrap button {
+  height: 56px;
+  padding: 0 28px;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.search-wrap button:hover { opacity: 0.85; }
+.search-wrap button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.chips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 2.5rem; }
+.chip {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  background: var(--surface-card);
+  padding: 7px 14px;
+  border-radius: 9999px;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.chip:hover { background: var(--surface-strong); }
+
+.price-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 52px;
+  background: var(--lavender);
+  color: var(--lavender-text);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+.price-link:hover { opacity: 0.9; }
+
 .verdict {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 18px;
+  background: var(--peach);
+  border-radius: var(--radius-xl);
+  padding: 24px 28px;
   margin-bottom: 1.5rem;
   display: none;
 }
 .verdict.show { display: block; }
 .verdict-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text2);
-  margin-bottom: 6px;
+  color: var(--peach-text);
+  opacity: 0.7;
+  margin-bottom: 8px;
 }
 .verdict-text {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 500;
-  color: var(--text);
-  line-height: 1.5;
+  color: var(--peach-text);
+  line-height: 1.55;
 }
-.verdict-text .highlight { color: var(--accent); font-weight: 700; }
+.verdict-text .highlight { font-weight: 700; }
 
-/* 섹션 */
+.status {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.spinner {
+  width: 14px; height: 14px;
+  border: 1.5px solid var(--hairline);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 .section { margin-bottom: 2rem; }
 .section-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  padding: 0 4px;
 }
-.section-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.dot-upcoming { background: var(--upcoming-text); }
-.dot-past { background: #7e9ec8; }
+.section-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-upcoming { background: var(--teal); }
+.dot-past { background: var(--lavender); }
 .section-title {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text2);
+  color: var(--muted);
 }
 .section-count {
-  font-size: 11px;
-  color: var(--text3);
+  font-size: 12px;
+  color: var(--muted-soft);
   margin-left: auto;
 }
 
-/* 카드 */
-.cards { display: flex; flex-direction: column; gap: 6px; }
+.cards { display: flex; flex-direction: column; gap: 8px; }
 
 .card {
-  border-radius: 10px;
-  padding: 13px 15px;
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
   display: flex;
   align-items: flex-start;
-  gap: 13px;
+  gap: 14px;
   text-decoration: none;
   color: inherit;
-  transition: opacity 0.15s;
+  transition: transform 0.1s;
 }
-.card:hover { opacity: 0.8; }
-.card.upcoming { background: var(--upcoming); border: 1px solid var(--upcoming-border); }
-.card.past { background: var(--past); border: 1px solid var(--past-border); }
+.card:hover { transform: translateY(-1px); }
+.card.upcoming { background: var(--teal); color: #e8f0ed; }
+.card.past { background: var(--surface-card); color: var(--ink); }
 
-.date-col { min-width: 44px; text-align: center; flex-shrink: 0; }
-.date-month { font-size: 10px; color: var(--text2); font-weight: 600; letter-spacing: 0.05em; }
-.date-day { font-size: 22px; font-weight: 700; line-height: 1.1; }
-.date-time { font-size: 10px; color: var(--text2); margin-top: 1px; }
-.card.upcoming .date-day { color: var(--upcoming-text); }
-.card.past .date-day { color: #7e9ec8; }
+.date-col { min-width: 46px; text-align: center; flex-shrink: 0; }
+.date-month { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; opacity: 0.65; }
+.date-day { font-size: 24px; font-weight: 700; line-height: 1.15; }
+.date-time { font-size: 10px; opacity: 0.65; margin-top: 2px; }
 
-.vline { width: 1px; background: var(--border); align-self: stretch; flex-shrink: 0; }
+.vline { width: 1px; align-self: stretch; flex-shrink: 0; opacity: 0.15; background: currentColor; }
 
 .info { flex: 1; min-width: 0; }
 .platform {
   display: inline-block;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  padding: 2px 7px;
-  border-radius: 999px;
-  margin-bottom: 4px;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  margin-bottom: 6px;
 }
-.card.upcoming .platform { background: rgba(126,200,126,0.15); color: var(--upcoming-text); }
-.card.past .platform { background: rgba(126,158,200,0.15); color: #7e9ec8; }
+.card.upcoming .platform { background: rgba(255,255,255,0.15); color: #b8e8d8; }
+.card.past .platform { background: var(--ochre); color: var(--ochre-text); }
 
 .title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--text);
 }
 
 .badge {
   flex-shrink: 0;
   font-size: 10px;
   font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 999px;
+  padding: 4px 9px;
+  border-radius: 9999px;
   align-self: flex-start;
-  letter-spacing: 0.05em;
 }
-.badge-live { background: #ff3b3b; color: #fff; animation: pulse 1.5s ease-in-out infinite; }
-.badge-upcoming { background: var(--upcoming-text); color: #0f0f0f; }
-@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+.badge-live { background: var(--pink); color: #fff; }
+.badge-upcoming { background: rgba(255,255,255,0.2); color: #fff; }
 
-/* 상태 */
-.status {
-  font-size: 12px;
-  color: var(--text2);
-  margin-bottom: 1rem;
-  min-height: 18px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.spinner {
-  width: 13px; height: 13px;
-  border: 1.5px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
+.ago-tag { font-size: 10px; opacity: 0.55; flex-shrink: 0; align-self: flex-start; margin-top: 3px; }
 
 .empty {
   text-align: center;
-  padding: 4rem 1rem;
-  color: var(--text3);
+  padding: 3.5rem 1rem;
+  color: var(--muted-soft);
   font-size: 14px;
-  line-height: 2;
+  line-height: 1.8;
 }
 
 footer {
   text-align: center;
-  font-size: 11px;
-  color: var(--text3);
+  font-size: 12px;
+  color: var(--muted-soft);
   padding: 2rem;
 }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="logo">라방 타이밍 체크</div>
-  <div class="tagline">지금 살까, <span>방송 기다릴까?</span></div>
-</header>
-
 <main>
+  <div class="hero">
+    <div class="eyebrow"><span class="dot"></span>라방바 데이터 기반</div>
+    <h1>지금 살까,<br><span class="accent">방송</span> 기다릴까?</h1>
+    <p class="sub">브랜드명을 검색하면 예정 방송과 지난 방송을<br>한눈에 비교해드려요</p>
+  </div>
+
   <div class="search-wrap">
-    <input type="text" id="input" placeholder="브랜드명 입력 (예: 아토팜, 달바…)" />
+    <input type="text" id="input" placeholder="브랜드명을 입력해보세요" />
     <button id="btn" onclick="doSearch()">검색</button>
   </div>
 
-  <div class="verdict" id="verdict">
-    <div class="verdict-label">💡 타이밍 분석</div>
-    <div class="verdict-text" id="verdictText"></div>
+  <div class="chips">
+    <button class="chip" onclick="quickSearch('아토팜')">아토팜</button>
+    <button class="chip" onclick="quickSearch('로보락')">로보락</button>
+    <button class="chip" onclick="quickSearch('달바')">달바</button>
+    <button class="chip" onclick="quickSearch('크록스')">크록스</button>
   </div>
 
-  <a id="priceBtn" class="price-link" style="display:none" target="_blank" rel="noopener">현재 쿠팡 최저가 확인하기 ↗</a>
+  <a id="priceBtn" class="price-link" style="display:none" target="_blank" rel="noopener">
+    현재 쿠팡 최저가 확인하기 →
+  </a>
+
+  <div class="verdict" id="verdict">
+    <div class="verdict-label">타이밍 분석</div>
+    <div class="verdict-text" id="verdictText"></div>
+  </div>
 
   <div class="status" id="status"></div>
   <div id="result">
@@ -292,6 +328,11 @@ const verdictEl = document.getElementById('verdict');
 const verdictText = document.getElementById('verdictText');
 
 input.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+function quickSearch(keyword) {
+  input.value = keyword;
+  doSearch();
+}
 
 function setStatus(msg, loading) {
   statusEl.innerHTML = loading
@@ -368,7 +409,7 @@ function pastCard(item) {
         <span class="platform">${item.platform}</span>
         <div class="title">${item.title}</div>
       </div>
-      ${ago ? `<span style="font-size:10px;color:var(--text3);flex-shrink:0;align-self:flex-start;margin-top:2px">${ago}</span>` : ''}
+      ${ago ? `<span class="ago-tag">${ago}</span>` : ''}
     </a>`;
 }
 
@@ -426,7 +467,7 @@ async function doSearch() {
 
     const priceBtn = document.getElementById('priceBtn');
     priceBtn.href = 'https://alltimeprice.com/search/?search=' + encodeURIComponent(keyword);
-    priceBtn.style.display = 'inline-flex';
+    priceBtn.style.display = 'flex';
 
     const verdict = makeVerdict(upcoming, past);
     if (verdict) {
@@ -453,7 +494,7 @@ async function doSearch() {
         <div class="section">
           <div class="section-header">
             <div class="section-dot dot-past"></div>
-            <div class="section-title">지난 방송 — 최근 3개월</div>
+            <div class="section-title">지난 방송 · 최근 3개월</div>
             <div class="section-count">${past.length}건</div>
           </div>
           <div class="cards">${past.map(pastCard).join('')}</div>
