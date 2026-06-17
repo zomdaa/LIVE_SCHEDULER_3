@@ -6,10 +6,9 @@ export default async function handler(req, res) {
   const { keyword } = req.query;
   if (!keyword) return res.status(400).json({ error: 'keyword is required' });
 
-  // 오늘부터 30일치 날짜 생성
   const dates = [];
   const now = new Date();
-  for (let i = 0; i <= 30; i++) {
+  for (let i = 0; i <= 6; i++) {
     const d = new Date(now);
     d.setDate(now.getDate() + i);
     const yy = String(d.getFullYear()).slice(2);
@@ -18,8 +17,17 @@ export default async function handler(req, res) {
     dates.push(`${yy}${mm}${dd}`);
   }
 
+  function buildUrl(platformId, pid, labangId) {
+    if (!pid) return `https://live.ecomm-data.com/report/labang/${labangId}`;
+    switch (platformId) {
+      case 'kakao':       return `https://shoppinglive.kakao.com/live/${pid}`;
+      case 'naver':       return `https://shoppinglive.naver.com/livebridge/${pid}`;
+      case '11st':        return `http://m.11st.co.kr/page/live11/detail?broadcastNo=${pid}`;
+      default:            return `https://live.ecomm-data.com/report/labang/${labangId}`;
+    }
+  }
+
   try {
-    // 병렬로 날짜별 편성표 fetch (최대 7일치만 — 너무 많으면 느려짐)
     const fetchDate = async (date) => {
       const r = await fetch('https://live.ecomm-data.com/api/schedule/list', {
         method: 'POST',
@@ -37,22 +45,21 @@ export default async function handler(req, res) {
       return Array.isArray(data?.list) ? data.list : [];
     };
 
-    // 오늘 + 앞으로 6일 = 7일치 병렬 fetch
-    const results = await Promise.all(dates.slice(0, 7).map(fetchDate));
+    const results = await Promise.all(dates.map(fetchDate));
     const allItems = results.flat();
 
-    // 브랜드명으로 필터링 (제목에 키워드 포함)
     const kw = keyword.toLowerCase();
     const filtered = allItems.filter(item =>
       item.labang_title?.toLowerCase().includes(kw)
     ).map(item => ({
       title: item.labang_title,
       platform: item.platform_name,
+      platformId: item.platform_id,
       start: item.labang_datetime_start,
       end: item.labang_datetime_end,
       status: item.status,
       id: item.labang_id,
-      url: item.labang_id ? `https://live.ecomm-data.com/report/labang/${item.labang_id}` : null,
+      url: buildUrl(item.platform_id, item.pid, item.labang_id),
     }));
 
     res.status(200).json({ upcoming: filtered, total: filtered.length, keyword });
