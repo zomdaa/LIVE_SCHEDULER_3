@@ -290,6 +290,7 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
 .card.urgency-2 { background: var(--urgency-2); color: #4a2a00; }
 .card.urgency-3 { background: var(--urgency-3); color: #5a3a10; }
 .card.urgency-4 { background: var(--urgency-4); color: #6b4520; }
+.card.urgency-ended { background: #e8e6e0; color: #8a847a; }
 
 .date-col { min-width: 48px; text-align: center; flex-shrink: 0; }
 .date-month { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; opacity: 0.7; }
@@ -310,6 +311,7 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
   background: rgba(255,255,255,0.35);
 }
 .card.urgency-2 .platform, .card.urgency-3 .platform, .card.urgency-4 .platform { background: rgba(255,255,255,0.45); }
+.card.urgency-ended .platform { background: rgba(138,132,122,0.18); color: #6b655d; }
 .card.past .platform { background: rgba(255,255,255,0.15); color: #cfc6ec; }
 
 .title {
@@ -330,6 +332,7 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
   background: rgba(255,255,255,0.4);
 }
 .badge-live { background: #fff; color: #ea2804; }
+.badge-ended { background: rgba(138,132,122,0.25); color: #6b655d; }
 
 .ago-tag { font-size: 10px; opacity: 0.6; flex-shrink: 0; align-self: flex-start; margin-top: 4px; }
 
@@ -451,7 +454,8 @@ function daysFromNow(d) {
   return Math.round((d - new Date()) / (1000 * 60 * 60 * 24));
 }
 
-function urgencyClass(isLive, days) {
+function urgencyClass(isLive, isEnded, days) {
+  if (isEnded) return 'urgency-ended';
   if (isLive) return 'urgency-live';
   if (days <= 1) return 'urgency-1';
   if (days <= 3) return 'urgency-2';
@@ -461,13 +465,21 @@ function urgencyClass(isLive, days) {
 
 function upcomingCard(item) {
   const start = parseLabangDate(item.start);
+  const end = parseLabangDate(item.end);
   const dt = fmtDate(start);
-  const isLive = item.status === 1;
+  const now = new Date();
+  const isEnded = end ? end < now : false;
+  const isLive = item.status === 1 && !isEnded;
   const days = daysFromNow(start);
-  const urgency = urgencyClass(isLive, days);
-  const badge = isLive
-    ? `<span class="badge badge-live">LIVE</span>`
-    : `<span class="badge badge-upcoming">${days === 0 ? '오늘' : days + '일 후'}</span>`;
+  const urgency = urgencyClass(isLive, isEnded, days);
+  let badge;
+  if (isEnded) {
+    badge = `<span class="badge badge-ended">종료</span>`;
+  } else if (isLive) {
+    badge = `<span class="badge badge-live">LIVE</span>`;
+  } else {
+    badge = `<span class="badge badge-upcoming">${days === 0 ? '오늘' : days + '일 후'}</span>`;
+  }
   return `
     <a class="card ${urgency}" href="${item.url || '#'}" target="_blank" rel="noopener">
       <div class="date-col">
@@ -506,12 +518,15 @@ function pastCard(item) {
 }
 
 function makeVerdict(upcoming, past) {
-  const nextBcast = upcoming[0];
+  const nextBcast = upcoming.find(u => {
+    const end = parseLabangDate(u.end);
+    return !end || end >= new Date();
+  }) || upcoming[0];
   const lastBcast = past[0];
 
   if (upcoming.length === 0 && past.length === 0) return null;
 
-  if (upcoming.length > 0) {
+  if (nextBcast) {
     const start = parseLabangDate(nextBcast.start);
     const days = daysFromNow(start);
     if (days <= 3) {
