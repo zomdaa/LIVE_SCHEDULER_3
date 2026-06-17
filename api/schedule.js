@@ -17,16 +17,6 @@ export default async function handler(req, res) {
     dates.push(`${yy}${mm}${dd}`);
   }
 
-  function buildUrl(platformId, pid, labangId) {
-    if (!pid) return `https://live.ecomm-data.com/report/labang/${labangId}`;
-    switch (platformId) {
-      case 'kakao':       return `https://shoppinglive.kakao.com/live/${pid}`;
-      case 'naver':       return `https://shoppinglive.naver.com/livebridge/${pid}`;
-      case '11st':        return `http://m.11st.co.kr/page/live11/detail?broadcastNo=${pid}`;
-      default:            return `https://live.ecomm-data.com/report/labang/${labangId}`;
-    }
-  }
-
   try {
     const fetchDate = async (date) => {
       const r = await fetch('https://live.ecomm-data.com/api/schedule/list', {
@@ -48,21 +38,16 @@ export default async function handler(req, res) {
     const results = await Promise.all(dates.map(fetchDate));
     const allItems = results.flat();
 
-    const kw = keyword.toLowerCase();
-    const filtered = allItems.filter(item =>
-      item.labang_title?.toLowerCase().includes(kw)
-    ).map(item => ({
-      title: item.labang_title,
-      platform: item.platform_name,
-      platformId: item.platform_id,
-      start: item.labang_datetime_start,
-      end: item.labang_datetime_end,
-      status: item.status,
-      id: item.labang_id,
-      url: buildUrl(item.platform_id, item.pid, item.labang_id),
-    }));
+    // 디버그: 첫 5개 raw 데이터 확인
+    return res.status(200).json({
+      debug: allItems.slice(0, 5).map(i => ({
+        title: i.labang_title,
+        platform_id: i.platform_id,
+        pid: i.pid,
+        labang_id: i.labang_id,
+      }))
+    });
 
-    res.status(200).json({ upcoming: filtered, total: filtered.length, keyword });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
