@@ -6,7 +6,8 @@ export default async function handler(req, res) {
   const { keyword } = req.query;
   if (!keyword) return res.status(400).json({ error: 'keyword is required' });
 
-  const encoded = encodeURIComponent(keyword);
+  const cleanKeyword = String(keyword).normalize('NFC').trim();
+  const encoded = encodeURIComponent(cleanKeyword);
 
   try {
     const response = await fetch('https://live.ecomm-data.com/search?keyword=' + encoded, {
@@ -24,6 +25,9 @@ export default async function handler(req, res) {
     const preview = html.substring(0, 1500);
 
     return res.status(200).json({
+      original_keyword: keyword,
+      clean_keyword: cleanKeyword,
+      encoded_used: encoded,
       status: response.status,
       hasLabang,
       hasPipe,
