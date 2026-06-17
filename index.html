@@ -250,6 +250,7 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
   min-height: 18px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   position: relative;
   z-index: 1;
@@ -273,7 +274,7 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
 }
 .section-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .dot-upcoming { background: var(--primary); }
-.dot-past { background: #3b3470; }
+.dot-past { background: #c9b020; }
 .section-title {
   font-size: 13px;
   font-weight: 700;
@@ -301,7 +302,26 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
 }
 .card:hover { transform: translateY(-2px); }
 
-.card.past { background: var(--past-gradient); color: #e8e4f5; }
+.card.past {
+  background: rgba(245, 223, 77, 0.55);
+  color: #5a4d10;
+  border-radius: 28px;
+  padding: 26px 22px 22px;
+  position: relative;
+  overflow: visible;
+}
+.card.past::before, .card.past::after {
+  content: '';
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  height: 16px;
+  background-image: radial-gradient(circle, rgba(245,223,77,0.55) 8px, transparent 8.5px);
+  background-size: 28px 16px;
+  background-repeat: repeat-x;
+}
+.card.past::before { top: -8px; background-position: 0 100%; }
+.card.past::after { bottom: -8px; background-position: 0 0%; }
 
 .card.urgency-live { background: var(--urgency-live); color: #fff; }
 .card.urgency-1 { background: var(--urgency-1); color: #fff; }
@@ -330,7 +350,7 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
 }
 .card.urgency-2 .platform, .card.urgency-3 .platform, .card.urgency-4 .platform { background: rgba(255,255,255,0.45); }
 .card.urgency-ended .platform { background: rgba(138,132,122,0.18); color: #6b655d; }
-.card.past .platform { background: rgba(255,255,255,0.15); color: #cfc6ec; }
+.card.past .platform { background: rgba(90,77,16,0.15); color: #5a4d10; }
 
 .title {
   font-size: 14px;
@@ -580,7 +600,7 @@ async function doSearch() {
   resultEl.innerHTML = '';
   document.getElementById('priceBtn').style.display = 'none';
   document.getElementById('naverBtn').style.display = 'none';
-  setStatus(`"${keyword}" 검색 중…`, true);
+  setStatus(`최저가 혜택을 위해 열심히 찾는 중..!`, true);
 
   try {
     const [schedRes, searchRes] = await Promise.all([
