@@ -3,33 +3,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { keyword, debugId } = req.query;
-
-  if (debugId) {
-    try {
-      const r = await fetch('https://live.ecomm-data.com/report/labang/' + debugId, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'text/html',
-          'Accept-Language': 'ko-KR,ko;q=0.9',
-        },
-      });
-      const html = await r.text();
-      const infoMatch = html.match(/"labang_url_info":"([^"]*)"/);
-      const replayMatch = html.match(/"labang_url_replay":"([^"]*)"/);
-      const liveMatch = html.match(/"labang_url_live":"([^"]*)"/);
-      const platformMatch = html.match(/"platform_id":"([^"]*)"/);
-      return res.status(200).json({
-        platform: platformMatch ? platformMatch[1] : null,
-        url_info: infoMatch ? infoMatch[1] : null,
-        url_replay: replayMatch ? replayMatch[1] : null,
-        url_live: liveMatch ? liveMatch[1] : null,
-      });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  }
-
+  const { keyword } = req.query;
   if (!keyword) return res.status(400).json({ error: 'keyword is required' });
 
   const dates = [];
@@ -53,8 +27,11 @@ export default async function handler(req, res) {
         },
       });
       const html = await r.text();
-      const match = html.match(/"labang_url_info":"([^"]+)"/);
-      return match ? match[1].replace(/\\u0026/g, '&') : null;
+      const infoMatch = html.match(/"labang_url_info":"([^"]+)"/);
+      const replayMatch = html.match(/"labang_url_replay":"([^"]+)"/);
+      const liveMatch = html.match(/"labang_url_live":"([^"]+)"/);
+      const url = (infoMatch && infoMatch[1]) || (replayMatch && replayMatch[1]) || (liveMatch && liveMatch[1]) || null;
+      return url ? url.replace(/\\u0026/g, '&') : null;
     } catch {
       return null;
     }
