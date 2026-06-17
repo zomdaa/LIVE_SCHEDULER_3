@@ -81,13 +81,24 @@ body {
 }
 .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
 
+.brand-title {
+  font-family: 'JejuStoneWall', 'Pretendard', sans-serif;
+  font-size: 52px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  color: #fff;
+  margin-bottom: 0.4rem;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+
 h1 {
   font-family: 'JejuStoneWall', 'Pretendard', sans-serif;
-  font-size: 40px;
+  font-size: 30px;
   font-weight: 400;
   letter-spacing: -0.01em;
   line-height: 1.15;
-  color: #fff;
+  color: rgba(255,255,255,0.92);
   margin-bottom: 0.85rem;
 }
 
@@ -182,6 +193,9 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
 .price-row { display: flex; gap: 10px; margin-bottom: 1.5rem; }
 @media (max-width: 480px) {
   .price-row { flex-direction: column; }
+  .brand-title { font-size: 38px; }
+  h1 { font-size: 22px; }
+  .sub { white-space: normal; }
 }
 .price-link {
   display: flex;
@@ -429,6 +443,7 @@ footer {
 <div class="hero-band">
   <div class="hero-content">
   <div class="eyebrow"><span class="dot"></span><span id="todayDate"></span></div>
+  <div class="brand-title">BUY IT? OR NOT?</div>
   <h1>지금 살까, 방송 기다릴까?</h1>
   <p class="sub">브랜드명을 검색하면 예정 방송과 지난 방송을 한눈에 비교해드려요</p>
   </div>
