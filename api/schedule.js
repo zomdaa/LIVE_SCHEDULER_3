@@ -1,3 +1,5 @@
+import { kv } from '@vercel/kv';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -5,6 +7,30 @@ export default async function handler(req, res) {
 
   const { keyword } = req.query;
   if (!keyword) return res.status(400).json({ error: 'keyword is required' });
+
+  const cleanKeyword = String(keyword).trim();
+  const cacheKey = 'schedule:' + cleanKeyword.toLowerCase();
+
+  // 레이트리밋: 같은 IP가 분당 너무 많이 요청하면 차단
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+  const rateKey = 'rate:' + ip;
+  try {
+    const count = await kv.incr(rateKey);
+    if (count === 1) {
+      await kv.expire(rateKey, 60);
+    }
+    if (count > 20) {
+      return res.status(429).json({ error: '요청이 너무 많아요. 잠시 후 다시 시도해주세요.' });
+    }
+  } catch (e) {}
+
+  // 캐시 확인
+  try {
+    const cached = await kv.get(cacheKey);
+    if (cached) {
+      return res.status(200).json({ ...cached, cached: true });
+    }
+  } catch (e) {}
 
   const dates = [];
   const now = new Date();
@@ -58,7 +84,7 @@ export default async function handler(req, res) {
     const results = await Promise.all(dates.map(fetchDate));
     const allItems = results.flat();
 
-    const kwTerms = keyword.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    const kwTerms = cleanKeyword.toLowerCase().split(/\s+/).filter(Boolean);
     const filtered = allItems.filter(item => {
       if (!item.labang_title) return false;
       const title = item.labang_title.toLowerCase();
@@ -80,7 +106,13 @@ export default async function handler(req, res) {
 
     upcoming.sort((a, b) => a.start.localeCompare(b.start));
 
-    res.status(200).json({ upcoming, total: upcoming.length, keyword });
+    const responseBody = { upcoming, total: upcoming.length, keyword: cleanKeyword };
+
+    try {
+      await kv.set(cacheKey, responseBody, { ex: 1800 }); // 30분 캐시
+    } catch (e) {}
+
+    res.status(200).json(responseBody);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
