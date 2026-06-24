@@ -74,14 +74,14 @@ body {
 
 .hero-deco {
   position: absolute;
-  top: -54px;
+  top: -10px;
   opacity: 1;
   pointer-events: none;
   z-index: 1;
 }
 .hero-deco img { width: 100%; display: block; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.2)); }
-.hero-deco.left { left: 4%; width: 110px; }
-.hero-deco.right { right: 6%; width: 56px; top: -36px; }
+.hero-deco.left { left: 4%; width: 110px; top: -8px; }
+.hero-deco.right { right: 6%; width: 56px; top: 4px; }
 
 @media (max-width: 640px) {
   .hero-deco.left { display: none; }
@@ -290,7 +290,8 @@ main {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   height: 56px;
   border-radius: 9999px;
   text-decoration: none;
