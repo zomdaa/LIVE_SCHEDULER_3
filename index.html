@@ -58,23 +58,25 @@ body {
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
-  padding: 3.25rem 1.5rem 4.5rem;
+  padding: 3.25rem 1.5rem 2.5rem;
   text-align: center;
   position: relative;
   overflow: hidden;
 }
 .hero-deco {
   position: absolute;
-  bottom: -6px;
+  top: 150px;
   opacity: 1;
   pointer-events: none;
   z-index: 1;
 }
-.hero-deco.left { left: 2%; width: 130px; }
-.hero-deco.left img { width: 100%; display: block; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.2)); }
+.hero-deco img { width: 100%; display: block; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.2)); }
+.hero-deco.left { left: 4%; width: 130px; }
+.hero-deco.right { right: 6%; width: 64px; top: 96px; }
 
 @media (max-width: 640px) {
   .hero-deco.left { display: none; }
+  .hero-deco.right { display: none; }
 }
 .hero-content { position: relative; z-index: 1; }
 .eyebrow {
@@ -223,12 +225,14 @@ main {
   background: var(--card);
   border-radius: 20px;
   padding: 20px;
-  margin-top: -2rem;
-  margin-bottom: 1.25rem;
+  margin: 1rem auto 0;
+  max-width: 720px;
+  width: 100%;
   position: relative;
-  z-index: 1;
+  z-index: 2;
   border: 1.5px solid #1a1814;
   box-shadow: 3px 3px 0 #1a1814;
+  box-sizing: border-box;
 }
 
 .search-wrap { display: flex; gap: 10px; }
@@ -603,24 +607,16 @@ footer {
 
 <div class="hero-band">
   <div class="hero-deco left">
-    <img src="https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/phone_on.png" alt="" />
+    <img src="https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/phone_on-Photoroom.png" alt="" />
+  </div>
+  <div class="hero-deco right">
+    <img src="https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/cart_on-Photoroom.png" alt="" />
   </div>
   <div class="hero-content">
   <div class="eyebrow"><span class="dot"></span><span id="todayDate"></span></div>
-  <div class="brand-title"><img src="https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/logo.png" alt="BUY NOW OR LIVE" /></div>
+  <div class="brand-title"><img src="https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/logo-Photoroom.png" alt="BUY NOW OR LIVE" /></div>
   <h1>지금 살까, 방송 기다릴까?</h1>
   <p class="sub">지난 라방과 앞으로 있을 라방 스케줄을<br>한눈에 보고 구매 타이밍 잡기!</p>
-  </div>
-</div>
-
-<main>
-  <div class="side-deco left">
-    <img src="https://i.imgur.com/tpl2tbc.jpeg" alt="" />
-    <img src="https://i.imgur.com/gk9Mlqh.jpeg" alt="" />
-  </div>
-  <div class="side-deco right">
-    <img src="https://i.imgur.com/l7Ia9i2.jpeg" alt="" />
-    <img src="https://i.imgur.com/gpodY9i.jpeg" alt="" />
   </div>
 
   <div class="search-card">
@@ -634,6 +630,17 @@ footer {
       <button class="chip" onclick="quickSearch('달바')">달바</button>
       <button class="chip" onclick="quickSearch('크록스')">크록스</button>
     </div>
+  </div>
+</div>
+
+<main>
+  <div class="side-deco left">
+    <img src="https://i.imgur.com/tpl2tbc.jpeg" alt="" />
+    <img src="https://i.imgur.com/gk9Mlqh.jpeg" alt="" />
+  </div>
+  <div class="side-deco right">
+    <img src="https://i.imgur.com/l7Ia9i2.jpeg" alt="" />
+    <img src="https://i.imgur.com/gpodY9i.jpeg" alt="" />
   </div>
 
   <div class="hot-rank" id="hotRank" style="display:none">
