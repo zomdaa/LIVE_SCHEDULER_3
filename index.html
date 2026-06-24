@@ -289,8 +289,16 @@ main {
   h1 { font-size: 22px; }
   .sub { white-space: normal; }
   .search-wrap { flex-direction: column; }
-  .search-wrap input { width: 100%; height: 64px; font-size: 16px; box-sizing: border-box; padding: 0 22px; }
-  .search-wrap button { width: 100%; height: 44px; margin-top: 6px; font-size: 14px; }
+  .search-wrap input {
+    width: 100% !important;
+    height: 58px !important;
+    min-height: 58px !important;
+    font-size: 16px !important;
+    box-sizing: border-box !important;
+    padding: 0 22px !important;
+    line-height: normal !important;
+  }
+  .search-wrap button { width: 100%; height: 58px; margin-top: 8px; font-size: 15px; }
   .price-row { gap: 8px; }
   .price-link { font-size: 12px; padding: 0 8px; gap: 5px; height: 46px; }
   .price-link .brand-logo { width: 13px; height: 13px; }
@@ -442,7 +450,7 @@ main {
 .card.urgency-ended { background: #e8e6e0; color: #8a847a; }
 
 .date-col {
-  min-width: 56px;
+  min-width: 68px;
   flex-shrink: 0;
   border-radius: 12px;
   overflow: hidden;
@@ -450,23 +458,24 @@ main {
   box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 .date-month {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
   color: #fff;
   background: var(--primary);
-  padding: 3px 0;
+  padding: 5px 4px;
   text-align: center;
 }
 .card.past .date-month { background: #c9a82a; }
 .date-day {
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1.1;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
   color: var(--ink);
   text-align: center;
-  padding: 4px 0 2px;
+  padding: 5px 2px 3px;
+  white-space: nowrap;
 }
 .date-time {
   font-size: 10px;
@@ -869,15 +878,15 @@ function upcomingCard(item) {
   const urgency = urgencyClass(isLive, isEnded, days);
   const likeId = item.id || '';
 
-  let badgeHtml;
+  let dDayLabel;
   if (isEnded) {
-    badgeHtml = `<div class="badge-box badge-ended-box"><span class="badge-num">종료</span></div>`;
+    dDayLabel = '종료';
   } else if (isLive) {
-    badgeHtml = `<div class="badge-box badge-live-box"><span class="badge-num">● LIVE</span></div>`;
+    dDayLabel = '● LIVE';
   } else if (days === 0) {
-    badgeHtml = `<div class="badge-box"><span class="badge-num">오늘</span></div>`;
+    dDayLabel = '오늘';
   } else {
-    badgeHtml = `<div class="badge-box"><span class="badge-num">D-${days}</span><span class="badge-unit">${days}일 후</span></div>`;
+    dDayLabel = `D-${days}`;
   }
 
   const likeHtml = likeId ? `
@@ -891,8 +900,8 @@ function upcomingCard(item) {
   return `
     <a class="card ${urgency}" href="${item.url || '#'}" target="_blank" rel="noopener">
       <div class="date-col">
-        <div class="date-month">${dt.month}</div>
-        <div class="date-day">${dt.day}</div>
+        <div class="date-month">${dDayLabel}</div>
+        <div class="date-day">${dt.month} ${dt.day}</div>
         <div class="date-time">${dt.time}</div>
       </div>
       <div class="vline"></div>
@@ -901,8 +910,6 @@ function upcomingCard(item) {
         <div class="title">${item.title}</div>
       </div>
       ${likeHtml}
-      ${badgeHtml}
-      <span class="go-arrow">›</span>
     </a>`;
 }
 
@@ -922,8 +929,8 @@ function pastCard(item) {
   return `
     <a class="card past" href="${item.url}" target="_blank" rel="noopener">
       <div class="date-col">
-        <div class="date-month">${dt.month}</div>
-        <div class="date-day">${dt.day}</div>
+        <div class="date-month">${ago}일 전</div>
+        <div class="date-day">${dt.month} ${dt.day}</div>
         <div class="date-time">${dt.time}</div>
       </div>
       <div class="vline"></div>
@@ -932,8 +939,6 @@ function pastCard(item) {
         <div class="title">${item.title}</div>
       </div>
       ${likeHtml}
-      <div class="ago-box"><span class="ago-num">${ago}</span><span class="ago-unit">일 전</span></div>
-      <span class="go-arrow">›</span>
     </a>`;
 }
 
