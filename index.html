@@ -132,6 +132,62 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
   .side-deco { display: none; }
 }
 
+.hot-rank {
+  background: var(--card);
+  border-radius: 18px;
+  padding: 16px 18px;
+  margin-top: -1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 10px 28px rgba(32,32,32,0.1);
+  position: relative;
+  z-index: 1;
+}
+.hot-rank-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--primary-deep);
+  margin-bottom: 10px;
+}
+.hot-rank-list { display: flex; flex-direction: column; gap: 8px; }
+.hot-rank-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+  padding: 4px 2px;
+  border-radius: 8px;
+  transition: background 0.12s;
+}
+.hot-rank-item:hover { background: var(--bone); }
+.hot-rank-num {
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--primary);
+}
+.hot-rank-item:nth-child(n+4) .hot-rank-num { color: var(--mute); }
+.hot-rank-title-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hot-rank-heart {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ff3b5c;
+}
+
 .search-card {
   background: var(--card);
   border-radius: 20px;
@@ -526,6 +582,11 @@ footer {
     <img src="https://i.imgur.com/gpodY9i.jpeg" alt="" />
   </div>
 
+  <div class="hot-rank" id="hotRank" style="display:none">
+    <div class="hot-rank-title">🔥 기대받는 HOT 방송!</div>
+    <div class="hot-rank-list" id="hotRankList"></div>
+  </div>
+
   <div class="search-card">
     <div class="search-wrap">
       <input type="text" id="input" placeholder="브랜드명 혹은 제품명을 입력해보세요!" />
@@ -581,6 +642,32 @@ if (todayDateEl) {
   todayDateEl.textContent = `${yy}. ${mm}. ${dd}`;
 }
 
+async function loadHotRank() {
+  const wrap = document.getElementById('hotRank');
+  const listEl = document.getElementById('hotRankList');
+  if (!wrap || !listEl) return;
+
+  try {
+    const r = await fetch('/api/like?top=5');
+    const data = await r.json();
+    const items = data.items || [];
+    if (!items.length) return;
+
+    listEl.innerHTML = items.map((item, idx) => `
+      <a class="hot-rank-item" href="${item.url || '#'}" target="_blank" rel="noopener">
+        <span class="hot-rank-num">${idx + 1}</span>
+        <span class="hot-rank-title-text">${escapeAttr(item.title)}</span>
+        <span class="hot-rank-heart">♥ ${item.count}</span>
+      </a>`).join('');
+
+    wrap.style.display = 'block';
+  } catch (e) {
+    // 실패 시 조용히 숨김 유지
+  }
+}
+
+loadHotRank();
+
 const input = document.getElementById('input');
 const btn = document.getElementById('btn');
 const statusEl = document.getElementById('status');
@@ -619,13 +706,16 @@ async function toggleLike(evt, id) {
   const liked = getLikedSet();
   const isLiked = liked.has(id);
   const action = isLiked ? 'unlike' : 'like';
+  const title = btn.dataset.title || '';
+  const url = btn.dataset.url || '';
+  const platform = btn.dataset.platform || '';
 
   btn.disabled = true;
   try {
     const r = await fetch('/api/like', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, action }),
+      body: JSON.stringify({ id, action, title, url, platform }),
     });
     const data = await r.json();
     if (typeof data.count === 'number') {
@@ -703,6 +793,10 @@ function daysFromNow(d) {
   return Math.round((d - new Date()) / (1000 * 60 * 60 * 24));
 }
 
+function escapeAttr(str) {
+  return String(str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function urgencyClass(isLive, isEnded, days) {
   if (isEnded) return 'urgency-ended';
   if (isLive) return 'urgency-live';
@@ -735,7 +829,7 @@ function upcomingCard(item) {
   }
 
   const likeHtml = likeId ? `
-      <button class="like-btn" data-like-id="${likeId}" onclick="toggleLike(event, '${likeId}')">
+      <button class="like-btn" data-like-id="${likeId}" data-title="${escapeAttr(item.title)}" data-url="${escapeAttr(item.url)}" data-platform="${escapeAttr(item.platform)}" onclick="toggleLike(event, '${likeId}')">
         <svg class="heart-icon" width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 20.5C12 20.5 3 15 3 8.8C3 5.7 5.4 3.5 8.2 3.5C9.8 3.5 11.2 4.3 12 5.6C12.8 4.3 14.2 3.5 15.8 3.5C18.6 3.5 21 5.7 21 8.8C21 15 12 20.5 12 20.5Z" stroke="currentColor" stroke-width="1.8"/>
         </svg>
