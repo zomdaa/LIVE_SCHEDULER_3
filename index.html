@@ -675,6 +675,18 @@ footer {
 <footer>데이터 출처: 라방바 데이터랩</footer>
 
 <script>
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+  const blockedKeys = ['F12'];
+  const isDevToolsShortcut =
+    (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) ||
+    (e.metaKey && e.altKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) ||
+    (e.ctrlKey && e.key.toUpperCase() === 'U') ||
+    (e.metaKey && e.altKey && e.key.toUpperCase() === 'U') ||
+    blockedKeys.includes(e.key);
+  if (isDevToolsShortcut) e.preventDefault();
+});
+
 const todayDateEl = document.getElementById('todayDate');
 if (todayDateEl) {
   const today = new Date();
