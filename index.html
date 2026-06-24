@@ -625,7 +625,7 @@ footer {
         <input type="text" id="input" placeholder="브랜드명 혹은 제품명을 입력해보세요!" />
         <button id="btn" onclick="doSearch()">검색</button>
       </div>
-      <div class="chips">
+      <div class="chips" id="chips">
         <button class="chip" onclick="quickSearch('아토팜')">아토팜</button>
         <button class="chip" onclick="quickSearch('로보락')">로보락</button>
         <button class="chip" onclick="quickSearch('달바')">달바</button>
@@ -724,6 +724,52 @@ function quickSearch(keyword) {
   input.value = keyword;
   doSearch();
 }
+
+function getRecentKeywords() {
+  try {
+    return JSON.parse(localStorage.getItem('recentKeywords') || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentKeyword(keyword) {
+  try {
+    let list = getRecentKeywords();
+    list = list.filter(k => k !== keyword);
+    list.unshift(keyword);
+    list = list.slice(0, 4);
+    localStorage.setItem('recentKeywords', JSON.stringify(list));
+  } catch {}
+}
+
+function renderChips(keywords) {
+  const chipsEl = document.getElementById('chips');
+  if (!chipsEl || !keywords.length) return;
+  chipsEl.innerHTML = keywords.map(kw =>
+    `<button class="chip" onclick="quickSearch('${escapeAttr(kw)}')">${escapeAttr(kw)}</button>`
+  ).join('');
+}
+
+async function loadChips() {
+  const recent = getRecentKeywords();
+  if (recent.length > 0) {
+    renderChips(recent);
+    return;
+  }
+  try {
+    const r = await fetch('/api/popular');
+    const data = await r.json();
+    const top = (data.top || []).map(item => item.keyword);
+    if (top.length > 0) {
+      renderChips(top);
+    }
+  } catch (e) {
+    // 실패 시 기본 칩(아토팜/로보락/달바/크록스) 유지
+  }
+}
+
+loadChips();
 
 function getLikedSet() {
   try {
@@ -988,6 +1034,8 @@ function makeVerdict(upcoming, past) {
 async function doSearch() {
   const keyword = input.value.trim();
   if (!keyword) return;
+
+  saveRecentKeyword(keyword);
 
   btn.disabled = true;
   verdictEl.classList.remove('show');
