@@ -1054,6 +1054,13 @@ async function doSearch() {
     const schedData = await schedRes.json();
     const searchData = await searchRes.json();
 
+    if (!schedRes.ok || !searchRes.ok) {
+      const msg = (!schedRes.ok && schedData.error) || (!searchRes.ok && searchData.error) || '잠시 후 다시 시도해주세요.';
+      setStatus(msg);
+      resultEl.innerHTML = '';
+      return;
+    }
+
     const rawUpcoming = schedData.upcoming || [];
     const rawPast = searchData.past || [];
 
