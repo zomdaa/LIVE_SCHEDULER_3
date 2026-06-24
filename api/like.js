@@ -1,5 +1,12 @@
 import { kv } from '@vercel/kv';
 
+function parseLabangDate(str) {
+  if (!str || str.length < 8) return null;
+  const yy = str.slice(0, 2), mm = str.slice(2, 4), dd = str.slice(4, 6);
+  const hh = str.slice(6, 8), mi = str.slice(8, 10) || '00';
+  return new Date(`20${yy}-${mm}-${dd}T${hh}:${mi}:00`);
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -9,7 +16,6 @@ export default async function handler(req, res) {
     const { ids, top } = req.query;
 
     if (top) {
-      // 인기 방송 TOP N 조회
       try {
         const allIds = await kv.smembers('liked-broadcast-ids');
         if (!allIds || allIds.length === 0) {
@@ -24,12 +30,22 @@ export default async function handler(req, res) {
             title: meta?.title || '',
             url: meta?.url || '',
             platform: meta?.platform || '',
+            end: meta?.end || '',
           };
         }));
-        const sorted = items
+
+        const now = new Date();
+        const stillLive = items.filter(item => {
+          if (!item.end) return true; // 종료시간 정보 없으면 일단 표시 (구버전 데이터 호환)
+          const endDate = parseLabangDate(item.end);
+          return !endDate || endDate >= now;
+        });
+
+        const sorted = stillLive
           .filter(i => i.count > 0)
           .sort((a, b) => b.count - a.count)
           .slice(0, Number(top) || 5);
+
         return res.status(200).json({ items: sorted });
       } catch (err) {
         return res.status(500).json({ error: err.message });
@@ -52,7 +68,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { id, action, title, url, platform } = req.body || {};
+    const { id, action, title, url, platform, end } = req.body || {};
     if (!id || !['like', 'unlike'].includes(action)) {
       return res.status(400).json({ error: 'id and valid action are required' });
     }
@@ -65,7 +81,7 @@ export default async function handler(req, res) {
         count = await kv.incr(key);
         await kv.sadd('liked-broadcast-ids', id);
         if (title) {
-          await kv.set('like-meta:' + id, { title, url: url || '', platform: platform || '' });
+          await kv.set('like-meta:' + id, { title, url: url || '', platform: platform || '', end: end || '' });
         }
       } else {
         count = await kv.decr(key);
