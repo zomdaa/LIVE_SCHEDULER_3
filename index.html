@@ -48,6 +48,7 @@ body {
   background: var(--canvas);
   color: var(--ink);
   min-height: 100vh;
+  padding-bottom: 44px;
 }
 
 .hero-band {
@@ -252,7 +253,7 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
   h1 { font-size: 22px; }
   .sub { white-space: normal; }
   .search-wrap { flex-direction: column; }
-  .search-wrap input { width: 100%; height: 52px; font-size: 16px; }
+  .search-wrap input { width: 100%; height: 58px; font-size: 16px; box-sizing: border-box; }
   .search-wrap button { width: 100%; height: 44px; margin-top: 6px; font-size: 14px; }
   .price-row { gap: 8px; }
   .price-link { font-size: 12px; padding: 0 8px; gap: 5px; height: 46px; }
@@ -555,9 +556,16 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
 
 footer {
   text-align: center;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ash);
-  padding: 2rem;
+  padding: 12px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--canvas);
+  border-top: 1px solid var(--hairline);
+  z-index: 10;
 }
 </style>
 </head>
@@ -568,7 +576,7 @@ footer {
   <div class="eyebrow"><span class="dot"></span><span id="todayDate"></span></div>
   <div class="brand-title">BUY NOW OR LIVE</div>
   <h1>지금 살까, 방송 기다릴까?</h1>
-  <p class="sub">지난 라방과 앞으로 있을 라방 스케줄을 한눈에 보고 구매 타이밍 잡기!</p>
+  <p class="sub">지난 라방과 앞으로 있을 라방 스케줄을<br>한눈에 보고 구매 타이밍 잡기!</p>
   </div>
 </div>
 
