@@ -1,5 +1,8 @@
 import { kv } from '@vercel/kv';
 
+const CONCURRENCY_KEY = 'active-searches';
+const MAX_CONCURRENT = 10;
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -11,7 +14,6 @@ export default async function handler(req, res) {
   const cleanKeyword = String(keyword).trim();
   const cacheKey = 'schedule:' + cleanKeyword.toLowerCase();
 
-  // 레이트리밋: 같은 IP가 분당 너무 많이 요청하면 차단
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
   const rateKey = 'rate:' + ip;
   try {
@@ -24,12 +26,24 @@ export default async function handler(req, res) {
     }
   } catch (e) {}
 
-  // 캐시 확인
   try {
     const cached = await kv.get(cacheKey);
     if (cached) {
       return res.status(200).json({ ...cached, cached: true });
     }
+  } catch (e) {}
+
+  let concurrencySlotTaken = false;
+  try {
+    const activeCount = await kv.incr(CONCURRENCY_KEY);
+    if (activeCount === 1) {
+      await kv.expire(CONCURRENCY_KEY, 30);
+    }
+    if (activeCount > MAX_CONCURRENT) {
+      await kv.decr(CONCURRENCY_KEY);
+      return res.status(429).json({ error: '지금 갑자기 많은 분들이 검색 중이에요..! 잠시 후 다시 시도해봐주세요!' });
+    }
+    concurrencySlotTaken = true;
   } catch (e) {}
 
   const dates = [];
@@ -109,11 +123,15 @@ export default async function handler(req, res) {
     const responseBody = { upcoming, total: upcoming.length, keyword: cleanKeyword };
 
     try {
-      await kv.set(cacheKey, responseBody, { ex: 1800 }); // 30분 캐시
+      await kv.set(cacheKey, responseBody, { ex: 7200 }); // 캐시 2시간으로 연장
     } catch (e) {}
 
     res.status(200).json(responseBody);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  } finally {
+    if (concurrencySlotTaken) {
+      try { await kv.decr(CONCURRENCY_KEY); } catch (e) {}
+    }
   }
 }
