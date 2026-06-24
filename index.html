@@ -45,7 +45,11 @@
 
 body {
   font-family: 'Pretendard', -apple-system, sans-serif;
-  background: var(--canvas);
+  background-color: var(--canvas);
+  background-image: url('https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/BG.png');
+  background-size: 100% auto;
+  background-position: top center;
+  background-repeat: no-repeat;
   color: var(--ink);
   min-height: 100vh;
   display: flex;
@@ -54,10 +58,6 @@ body {
 
 .hero-band {
   width: 100%;
-  background-image: url('https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/BG.png');
-  background-size: cover;
-  background-position: center bottom;
-  background-repeat: no-repeat;
   padding: 3.25rem 1.5rem 2.5rem;
   text-align: center;
   position: relative;
@@ -140,12 +140,6 @@ main {
   margin: 0 auto;
   padding: 0 1.5rem 4rem;
   position: relative;
-  background-image:
-    radial-gradient(circle, rgba(32,32,32,0.06) 1px, transparent 1px),
-    linear-gradient(to right, rgba(32,32,32,0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(32,32,32,0.035) 1px, transparent 1px);
-  background-size: 14px 14px, 28px 28px, 28px 28px;
-  background-position: 0 0, 0 0, 0 0;
 }
 
 .side-deco {
@@ -586,12 +580,13 @@ main {
 .empty {
   text-align: center;
   padding: 3.5rem 1rem;
-  color: var(--ash);
+  color: #4a4136;
   font-size: 14px;
   line-height: 1.8;
   position: relative;
   z-index: 1;
-  background: var(--canvas);
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(255,255,255,0.6);
 }
 
 footer {
