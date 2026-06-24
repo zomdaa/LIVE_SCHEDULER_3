@@ -344,10 +344,43 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
 .card.urgency-4 { background: var(--urgency-4); color: #6b4520; }
 .card.urgency-ended { background: #e8e6e0; color: #8a847a; }
 
-.date-col { min-width: 58px; text-align: center; flex-shrink: 0; }
-.date-month { font-size: 13px; font-weight: 700; letter-spacing: 0.01em; opacity: 0.85; line-height: 1.2; }
-.date-day { font-size: 22px; font-weight: 800; line-height: 1.15; }
-.date-time { font-size: 12px; font-weight: 700; opacity: 0.85; margin-top: 3px; }
+.date-col {
+  min-width: 56px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+.date-month {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--primary);
+  padding: 3px 0;
+  text-align: center;
+}
+.card.past .date-month { background: #c9a82a; }
+.date-day {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--ink);
+  text-align: center;
+  padding: 4px 0 2px;
+}
+.date-time {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--mute);
+  text-align: center;
+  padding-bottom: 4px;
+  border-top: 1px dashed var(--hairline);
+  margin: 0 6px;
+  padding-top: 3px;
+}
 
 .vline { width: 1px; align-self: stretch; flex-shrink: 0; opacity: 0.2; background: currentColor; }
 
@@ -427,12 +460,16 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
 }
 .like-btn:hover { background: rgba(255,255,255,0.45); }
 .like-btn:active { transform: scale(0.92); }
-.like-btn .heart-icon { color: inherit; opacity: 0.7; transition: color 0.15s, opacity 0.15s; }
+.like-btn .heart-icon { color: inherit; opacity: 0.7; fill: none; transition: color 0.15s, opacity 0.15s, fill 0.15s; }
 .like-btn.liked .heart-icon { color: #ff3b5c; opacity: 1; fill: #ff3b5c; }
 .like-btn .like-count { font-size: 11px; font-weight: 700; opacity: 0.85; }
 .card.urgency-2 .like-btn, .card.urgency-3 .like-btn, .card.urgency-4 .like-btn { background: rgba(255,255,255,0.4); }
 .card.urgency-2 .like-btn:hover, .card.urgency-3 .like-btn:hover, .card.urgency-4 .like-btn:hover { background: rgba(255,255,255,0.55); }
 .card.urgency-ended .like-btn { background: rgba(138,132,122,0.15); }
+.like-btn.liked-readonly { cursor: default; }
+.like-btn.liked-readonly:hover { background: inherit; }
+.card.past .like-btn { background: rgba(90,77,16,0.12); }
+.card.past .like-btn.liked .heart-icon { color: #ff3b5c; fill: #ff3b5c; }
 
 .ago-box {
   flex-shrink: 0;
@@ -699,8 +736,8 @@ function upcomingCard(item) {
 
   const likeHtml = likeId ? `
       <button class="like-btn" data-like-id="${likeId}" onclick="toggleLike(event, '${likeId}')">
-        <svg class="heart-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 20.5C12 20.5 3 15 3 8.8C3 5.7 5.4 3.5 8.2 3.5C9.8 3.5 11.2 4.3 12 5.6C12.8 4.3 14.2 3.5 15.8 3.5C18.6 3.5 21 5.7 21 8.8C21 15 12 20.5 12 20.5Z" stroke="currentColor" stroke-width="1.8" fill="none"/>
+        <svg class="heart-icon" width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 20.5C12 20.5 3 15 3 8.8C3 5.7 5.4 3.5 8.2 3.5C9.8 3.5 11.2 4.3 12 5.6C12.8 4.3 14.2 3.5 15.8 3.5C18.6 3.5 21 5.7 21 8.8C21 15 12 20.5 12 20.5Z" stroke="currentColor" stroke-width="1.8"/>
         </svg>
         <span class="like-count">0</span>
       </button>` : '';
@@ -728,6 +765,14 @@ function pastCard(item) {
   const dt = fmtDate(d);
   const days = daysFromNow(d);
   const ago = days === null ? Math.abs(0) : Math.abs(days);
+  const likeId = item.id || '';
+  const likeHtml = likeId ? `
+      <div class="like-btn liked-readonly" data-like-id="${likeId}">
+        <svg class="heart-icon" width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 20.5C12 20.5 3 15 3 8.8C3 5.7 5.4 3.5 8.2 3.5C9.8 3.5 11.2 4.3 12 5.6C12.8 4.3 14.2 3.5 15.8 3.5C18.6 3.5 21 5.7 21 8.8C21 15 12 20.5 12 20.5Z" stroke="currentColor" stroke-width="1.8"/>
+        </svg>
+        <span class="like-count">0</span>
+      </div>` : '';
   return `
     <a class="card past" href="${item.url}" target="_blank" rel="noopener">
       <div class="date-col">
@@ -740,6 +785,7 @@ function pastCard(item) {
         <span class="platform">${item.platform}</span>
         <div class="title">${item.title}</div>
       </div>
+      ${likeHtml}
       <div class="ago-box"><span class="ago-num">${ago}</span><span class="ago-unit">일 전</span></div>
       <span class="go-arrow">›</span>
     </a>`;
