@@ -235,7 +235,7 @@ main {
 .search-wrap input:focus { box-shadow: 0 0 0 3px rgba(59,130,246,0.35); }
 .search-wrap button {
   height: 54px;
-  padding: 0 30px;
+  padding: 0 22px;
   background: var(--primary);
   color: #fff;
   border: none;
@@ -245,9 +245,10 @@ main {
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.1s;
 }
 .search-wrap button:hover { background: var(--primary-deep); }
+.search-wrap button:active { transform: scale(0.94) rotate(-1deg); }
 .search-wrap button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .chips { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
@@ -375,6 +376,14 @@ main {
   animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes btn-bounce {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.88) rotate(-2deg); }
+  55% { transform: scale(1.06) rotate(1deg); }
+  75% { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+.search-wrap button.bounce { animation: btn-bounce 0.45s ease; }
 
 .section { margin-bottom: 2rem; }
 .section-header {
@@ -623,7 +632,7 @@ footer {
     <div class="search-card">
       <div class="search-wrap">
         <input type="text" id="input" placeholder="브랜드명 혹은 제품명을 입력해보세요!" />
-        <button id="btn" onclick="doSearch()">검색</button>
+        <button id="btn" onclick="handleSearchClick()">찾아볼게요 🔍</button>
       </div>
       <div class="chips" id="chips">
         <button class="chip" onclick="quickSearch('아토팜')">아토팜</button>
@@ -730,7 +739,15 @@ const verdictEl = document.getElementById('verdict');
 const verdictText = document.getElementById('verdictText');
 const verdictTitle = document.getElementById('verdictTitle');
 
-input.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+input.addEventListener('keydown', e => { if (e.key === 'Enter') handleSearchClick(); });
+
+function handleSearchClick() {
+  btn.classList.remove('bounce');
+  // 리플로우를 강제로 일으켜 애니메이션 재시작 보장
+  void btn.offsetWidth;
+  btn.classList.add('bounce');
+  doSearch();
+}
 
 function quickSearch(keyword) {
   input.value = keyword;
@@ -896,6 +913,19 @@ function daysFromNow(d) {
 
 function escapeAttr(str) {
   return String(str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function formatVerdictBody(text) {
+  if (!text) return '';
+  // 문장 종결 부호(. ! ?) 뒤에서 분리하되 구분자는 유지
+  const sentences = text.match(/[^.!?]+[.!?]+(\s|$)/g) || [text];
+  const trimmed = sentences.map(s => s.trim()).filter(Boolean);
+  // 너무 짧은 마지막 문장은 바로 앞 문장과 합쳐 한 줄 외톨이 방지
+  if (trimmed.length > 1 && trimmed[trimmed.length - 1].length <= 6) {
+    const last = trimmed.pop();
+    trimmed[trimmed.length - 1] += ' ' + last;
+  }
+  return trimmed.map(escapeAttr).join('<br>');
 }
 
 function urgencyClass(isLive, isEnded, days) {
@@ -1108,7 +1138,7 @@ async function doSearch() {
     const verdict = makeVerdict(upcoming, past);
     if (verdict) {
       verdictTitle.textContent = verdict.title;
-      verdictText.textContent = verdict.body;
+      verdictText.innerHTML = formatVerdictBody(verdict.body);
       verdictEl.classList.add('show');
     } else {
       verdictEl.classList.remove('show');
