@@ -1054,8 +1054,26 @@ async function doSearch() {
     const schedData = await schedRes.json();
     const searchData = await searchRes.json();
 
-    const upcoming = schedData.upcoming || [];
-    const past = searchData.past || [];
+    const rawUpcoming = schedData.upcoming || [];
+    const rawPast = searchData.past || [];
+
+    const now = new Date();
+    const stillUpcoming = [];
+    const endedFromUpcoming = [];
+
+    rawUpcoming.forEach(item => {
+      const end = parseLabangDate(item.end);
+      const isEnded = end ? end < now : false;
+      if (isEnded) {
+        endedFromUpcoming.push(item);
+      } else {
+        stillUpcoming.push(item);
+      }
+    });
+
+    const upcoming = stillUpcoming;
+    const past = [...endedFromUpcoming, ...rawPast]
+      .sort((a, b) => String(b.start).localeCompare(String(a.start)));
 
     const total = upcoming.length + past.length;
     setStatus(total ? `예정 ${upcoming.length}건 · 과거 ${past.length}건 발견` : '검색 결과가 없어요');
