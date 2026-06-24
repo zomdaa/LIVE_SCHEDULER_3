@@ -148,25 +148,6 @@ main {
   position: relative;
 }
 
-.side-deco {
-  position: absolute;
-  top: 280px;
-  width: 280px;
-  opacity: 0.28;
-  pointer-events: none;
-  z-index: -1;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-.side-deco.left { left: -260px; }
-.side-deco.right { right: -260px; }
-.side-deco img { width: 100%; display: block; border-radius: 24px; }
-
-@media (max-width: 1300px) {
-  .side-deco { display: none; }
-}
-
 .hot-rank {
   background: var(--card);
   border-radius: 18px;
@@ -594,23 +575,26 @@ main {
 
 .empty {
   text-align: center;
-  padding: 3.5rem 1rem;
-  color: #4a4136;
+  padding: 2.25rem 1.5rem;
+  color: #5a4d10;
   font-size: 14px;
-  line-height: 1.8;
+  line-height: 1.7;
+  font-weight: 600;
   position: relative;
   z-index: 1;
-  font-weight: 600;
-  text-shadow: 0 1px 3px rgba(255,255,255,0.6);
+  background: rgba(255,255,255,0.7);
+  border-radius: 18px;
+  border: 1.5px solid rgba(26,24,20,0.5);
 }
 
 footer {
   text-align: center;
-  font-size: 11px;
-  color: var(--ash);
-  padding: 16px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4a4136;
+  padding: 18px 12px;
   margin-top: auto;
-  background: var(--canvas);
+  text-shadow: 0 1px 3px rgba(255,255,255,0.5);
 }
 </style>
 </head>
@@ -647,14 +631,6 @@ footer {
 </div>
 
 <main>
-  <div class="side-deco left">
-    <img src="https://i.imgur.com/tpl2tbc.jpeg" alt="" />
-    <img src="https://i.imgur.com/gk9Mlqh.jpeg" alt="" />
-  </div>
-  <div class="side-deco right">
-    <img src="https://i.imgur.com/l7Ia9i2.jpeg" alt="" />
-    <img src="https://i.imgur.com/gpodY9i.jpeg" alt="" />
-  </div>
 
   <div class="hot-rank" id="hotRank" style="display:none">
     <div class="hot-rank-title">🔥 기대받는 HOT 방송!</div>
@@ -687,7 +663,7 @@ footer {
 
   <div class="status" id="status"></div>
   <div id="result">
-    <div class="empty">브랜드명을 검색하면<br>예정 방송과 과거 방송을 함께 보여드려요</div>
+    <div class="empty">🔍 브랜드명을 검색하면<br>예정 방송과 과거 방송을 함께 보여드려요</div>
   </div>
 </main>
 
@@ -1074,7 +1050,7 @@ async function doSearch() {
     }
 
     if (!html) {
-      html = `<div class="empty">"${keyword}" 방송 기록이 없어요.<br>브랜드명을 다시 확인해보세요.</div>`;
+      html = `<div class="empty">😢 "${keyword}" 방송 기록이 없어요.<br>브랜드명을 다시 확인해보세요.</div>`;
     }
 
     resultEl.innerHTML = html;
