@@ -797,13 +797,14 @@ async function toggleLike(evt, id) {
   const title = btn.dataset.title || '';
   const url = btn.dataset.url || '';
   const platform = btn.dataset.platform || '';
+  const end = btn.dataset.end || '';
 
   btn.disabled = true;
   try {
     const r = await fetch('/api/like', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, action, title, url, platform }),
+      body: JSON.stringify({ id, action, title, url, platform, end }),
     });
     const data = await r.json();
     if (typeof data.count === 'number') {
@@ -917,7 +918,7 @@ function upcomingCard(item) {
   }
 
   const likeHtml = likeId ? `
-      <button class="like-btn" data-like-id="${likeId}" data-title="${escapeAttr(item.title)}" data-url="${escapeAttr(item.url)}" data-platform="${escapeAttr(item.platform)}" onclick="toggleLike(event, '${likeId}')">
+      <button class="like-btn" data-like-id="${likeId}" data-title="${escapeAttr(item.title)}" data-url="${escapeAttr(item.url)}" data-platform="${escapeAttr(item.platform)}" data-end="${escapeAttr(item.end)}" onclick="toggleLike(event, '${likeId}')">
         <svg class="heart-icon" width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 20.5C12 20.5 3 15 3 8.8C3 5.7 5.4 3.5 8.2 3.5C9.8 3.5 11.2 4.3 12 5.6C12.8 4.3 14.2 3.5 15.8 3.5C18.6 3.5 21 5.7 21 8.8C21 15 12 20.5 12 20.5Z" stroke="currentColor" stroke-width="1.8"/>
         </svg>
