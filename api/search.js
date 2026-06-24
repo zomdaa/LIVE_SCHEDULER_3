@@ -11,29 +11,24 @@ export default async function handler(req, res) {
   const cleanKeyword = String(keyword).trim();
   const cacheKey = 'search:' + cleanKeyword.toLowerCase();
 
-  // 레이트리밋: 같은 IP가 분당 너무 많이 요청하면 차단
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
   const rateKey = 'rate:' + ip;
   try {
     const count = await kv.incr(rateKey);
     if (count === 1) {
-      await kv.expire(rateKey, 60); // 60초 윈도우
+      await kv.expire(rateKey, 60);
     }
     if (count > 20) {
       return res.status(429).json({ error: '요청이 너무 많아요. 잠시 후 다시 시도해주세요.' });
     }
-  } catch (e) {
-    // KV 오류 시에도 서비스는 계속 동작하게 둠
-  }
+  } catch (e) {}
 
-  // 검색어 로그 (실패해도 검색 자체는 계속 진행)
   try {
     const logEntry = JSON.stringify({ keyword: cleanKeyword, time: new Date().toISOString(), ip });
     await kv.lpush('search-logs', logEntry);
-    await kv.ltrim('search-logs', 0, 999); // 최근 1000개만 유지
+    await kv.ltrim('search-logs', 0, 999);
   } catch (e) {}
 
-  // 캐시 확인
   try {
     const cached = await kv.get(cacheKey);
     if (cached) {
@@ -106,6 +101,7 @@ export default async function handler(req, res) {
     const past = await Promise.all(matched.map(async (item) => {
       const realUrl = await getRealUrl(item.labang_id);
       return {
+        id: item.labang_id,
         title: item.labang_title,
         platform: item.platform_name,
         start: item.labang_datetime_start,
@@ -117,7 +113,7 @@ export default async function handler(req, res) {
     const responseBody = { past, total: past.length, keyword: cleanKeyword };
 
     try {
-      await kv.set(cacheKey, responseBody, { ex: 1800 }); // 30분 캐시
+      await kv.set(cacheKey, responseBody, { ex: 1800 });
     } catch (e) {}
 
     res.status(200).json(responseBody);
