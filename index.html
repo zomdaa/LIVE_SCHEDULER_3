@@ -48,7 +48,8 @@ body {
   background: var(--canvas);
   color: var(--ink);
   min-height: 100vh;
-  padding-bottom: 44px;
+  display: flex;
+  flex-direction: column;
 }
 
 .hero-band {
@@ -137,7 +138,7 @@ main { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 4rem; position: relat
   background: var(--card);
   border-radius: 18px;
   padding: 16px 18px;
-  margin-top: -1.5rem;
+  margin-top: 1.25rem;
   margin-bottom: 1.25rem;
   box-shadow: 0 10px 28px rgba(32,32,32,0.1);
   position: relative;
@@ -558,14 +559,9 @@ footer {
   text-align: center;
   font-size: 11px;
   color: var(--ash);
-  padding: 12px;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  padding: 16px 12px;
+  margin-top: auto;
   background: var(--canvas);
-  border-top: 1px solid var(--hairline);
-  z-index: 10;
 }
 </style>
 </head>
@@ -590,11 +586,6 @@ footer {
     <img src="https://i.imgur.com/gpodY9i.jpeg" alt="" />
   </div>
 
-  <div class="hot-rank" id="hotRank" style="display:none">
-    <div class="hot-rank-title">🔥 기대받는 HOT 방송!</div>
-    <div class="hot-rank-list" id="hotRankList"></div>
-  </div>
-
   <div class="search-card">
     <div class="search-wrap">
       <input type="text" id="input" placeholder="브랜드명 혹은 제품명을 입력해보세요!" />
@@ -606,6 +597,11 @@ footer {
       <button class="chip" onclick="quickSearch('달바')">달바</button>
       <button class="chip" onclick="quickSearch('크록스')">크록스</button>
     </div>
+  </div>
+
+  <div class="hot-rank" id="hotRank" style="display:none">
+    <div class="hot-rank-title">🔥 기대받는 HOT 방송!</div>
+    <div class="hot-rank-list" id="hotRankList"></div>
   </div>
 
   <div class="verdict" id="verdict">
