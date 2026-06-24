@@ -56,23 +56,25 @@ body {
   width: 100%;
   background-image: url('https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/BG.png');
   background-size: cover;
-  background-position: center top;
+  background-position: center bottom;
   background-repeat: no-repeat;
   padding: 3.25rem 1.5rem 2.5rem;
   text-align: center;
   position: relative;
   overflow: hidden;
 }
+.search-card-wrap { position: relative; max-width: 720px; margin: 1rem auto 0; }
+
 .hero-deco {
   position: absolute;
-  top: 150px;
+  top: -54px;
   opacity: 1;
   pointer-events: none;
   z-index: 1;
 }
 .hero-deco img { width: 100%; display: block; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.2)); }
-.hero-deco.left { left: 4%; width: 130px; }
-.hero-deco.right { right: 6%; width: 64px; top: 96px; }
+.hero-deco.left { left: 4%; width: 110px; }
+.hero-deco.right { right: 6%; width: 56px; top: -36px; }
 
 @media (max-width: 640px) {
   .hero-deco.left { display: none; }
@@ -95,13 +97,13 @@ body {
 .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
 
 .brand-title {
-  margin-bottom: 0.6rem;
+  margin-bottom: -0.3rem;
   display: flex;
   justify-content: center;
 }
 .brand-title img {
   max-width: 100%;
-  width: 480px;
+  width: 720px;
   height: auto;
   display: block;
   filter: drop-shadow(0 4px 10px rgba(0,0,0,0.25));
@@ -114,6 +116,7 @@ h1 {
   letter-spacing: -0.01em;
   line-height: 1.15;
   color: #fff;
+  margin-top: -0.4rem;
   margin-bottom: 0.85rem;
   text-shadow:
     -1.5px -1.5px 0 #1a4a6e, 1.5px -1.5px 0 #1a4a6e,
@@ -225,8 +228,6 @@ main {
   background: var(--card);
   border-radius: 20px;
   padding: 20px;
-  margin: 1rem auto 0;
-  max-width: 720px;
   width: 100%;
   position: relative;
   z-index: 2;
@@ -606,12 +607,6 @@ footer {
 <body>
 
 <div class="hero-band">
-  <div class="hero-deco left">
-    <img src="https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/phone_on-Photoroom.png" alt="" />
-  </div>
-  <div class="hero-deco right">
-    <img src="https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/cart_on-Photoroom.png" alt="" />
-  </div>
   <div class="hero-content">
   <div class="eyebrow"><span class="dot"></span><span id="todayDate"></span></div>
   <div class="brand-title"><img src="https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/logo-Photoroom.png" alt="BUY NOW OR LIVE" /></div>
@@ -619,16 +614,24 @@ footer {
   <p class="sub">지난 라방과 앞으로 있을 라방 스케줄을<br>한눈에 보고 구매 타이밍 잡기!</p>
   </div>
 
-  <div class="search-card">
-    <div class="search-wrap">
-      <input type="text" id="input" placeholder="브랜드명 혹은 제품명을 입력해보세요!" />
-      <button id="btn" onclick="doSearch()">검색</button>
+  <div class="search-card-wrap">
+    <div class="hero-deco left">
+      <img src="https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/phone_on-Photoroom.png" alt="" />
     </div>
-    <div class="chips">
-      <button class="chip" onclick="quickSearch('아토팜')">아토팜</button>
-      <button class="chip" onclick="quickSearch('로보락')">로보락</button>
-      <button class="chip" onclick="quickSearch('달바')">달바</button>
-      <button class="chip" onclick="quickSearch('크록스')">크록스</button>
+    <div class="hero-deco right">
+      <img src="https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/cart_on-Photoroom.png" alt="" />
+    </div>
+    <div class="search-card">
+      <div class="search-wrap">
+        <input type="text" id="input" placeholder="브랜드명 혹은 제품명을 입력해보세요!" />
+        <button id="btn" onclick="doSearch()">검색</button>
+      </div>
+      <div class="chips">
+        <button class="chip" onclick="quickSearch('아토팜')">아토팜</button>
+        <button class="chip" onclick="quickSearch('로보락')">로보락</button>
+        <button class="chip" onclick="quickSearch('달바')">달바</button>
+        <button class="chip" onclick="quickSearch('크록스')">크록스</button>
+      </div>
     </div>
   </div>
 </div>
