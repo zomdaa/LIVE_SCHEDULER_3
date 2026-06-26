@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method === 'GET') {
-    const { ids, top, debug } = req.query;
+    const { ids, top, debug, cleanup } = req.query;
 
     if (debug) {
       try {
@@ -24,6 +24,23 @@ export default async function handler(req, res) {
           return { id, count, meta };
         }));
         return res.status(200).json({ now: new Date().toISOString(), items });
+      } catch (err) {
+        return res.status(500).json({ error: err.message });
+      }
+    }
+
+    if (cleanup) {
+      try {
+        const allIds = await kv.smembers('liked-broadcast-ids');
+        let removed = 0;
+        for (const id of (allIds || [])) {
+          const meta = await kv.get('like-meta:' + id);
+          if (!meta?.end) {
+            await kv.srem('liked-broadcast-ids', id);
+            removed++;
+          }
+        }
+        return res.status(200).json({ removed });
       } catch (err) {
         return res.status(500).json({ error: err.message });
       }
@@ -50,7 +67,7 @@ export default async function handler(req, res) {
 
         const now = new Date();
         const stillLive = items.filter(item => {
-          if (!item.end) return true;
+          if (!item.end) return false;
           const endDate = parseLabangDate(item.end);
           return !endDate || endDate >= now;
         });
