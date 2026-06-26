@@ -13,7 +13,21 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method === 'GET') {
-    const { ids, top } = req.query;
+    const { ids, top, debug } = req.query;
+
+    if (debug) {
+      try {
+        const allIds = await kv.smembers('liked-broadcast-ids');
+        const items = await Promise.all((allIds || []).map(async (id) => {
+          const count = await kv.get('like-count:' + id);
+          const meta = await kv.get('like-meta:' + id);
+          return { id, count, meta };
+        }));
+        return res.status(200).json({ now: new Date().toISOString(), items });
+      } catch (err) {
+        return res.status(500).json({ error: err.message });
+      }
+    }
 
     if (top) {
       try {
@@ -36,7 +50,7 @@ export default async function handler(req, res) {
 
         const now = new Date();
         const stillLive = items.filter(item => {
-          if (!item.end) return true; // 종료시간 정보 없으면 표시 (구버전 데이터 호환)
+          if (!item.end) return true;
           const endDate = parseLabangDate(item.end);
           return !endDate || endDate >= now;
         });
