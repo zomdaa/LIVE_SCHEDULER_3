@@ -285,6 +285,7 @@ main {
   .price-row { gap: 8px; }
   .price-link { font-size: 11px; padding: 6px 6px; gap: 2px; height: 58px; }
   .price-link .brand-logo { width: 16px; height: 16px; }
+  .price-link .coupang-logo { width: auto; height: 13px; padding: 2px 5px; }
 }
 .price-link {
   display: flex;
@@ -312,6 +313,14 @@ main {
 .price-link.naver:hover { background: #02a64a; }
 .price-link .arrow { font-weight: 800; }
 .price-link .brand-logo { flex-shrink: 0; }
+.price-link .coupang-logo {
+  width: auto;
+  height: 16px;
+  background: #fff;
+  border-radius: 4px;
+  padding: 2px 6px;
+  object-fit: contain;
+}
 
 .verdict {
   background: #fff8e8;
@@ -664,10 +673,7 @@ footer {
 
   <div class="price-row">
     <a id="priceBtn" class="price-link coupang" style="display:none" target="_blank" rel="noopener">
-      <svg class="brand-logo" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M6 8H18L19 21H5L6 8Z" fill="#fff"/>
-        <path d="M8.5 8V6C8.5 4.067 10.067 2.5 12 2.5C13.933 2.5 15.5 4.067 15.5 6V8" stroke="#fff" stroke-width="1.6" fill="none"/>
-      </svg>
+      <img class="brand-logo coupang-logo" src="https://i.imgur.com/9NOTcxq.png" alt="쿠팡" />
       <span class="price-link-text">쿠팡 최저가 확인하기 <span class="arrow">→</span></span>
     </a>
     <a id="naverBtn" class="price-link naver" style="display:none" target="_blank" rel="noopener">
