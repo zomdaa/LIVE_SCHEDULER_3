@@ -53,7 +53,7 @@ async function runAll() {
 
   if (gmarketResult.status === 'fulfilled') {
     const ok = await ingest('gmarket', gmarketResult.value, secret);
-    summary.gmarket = { count: gmarketResult.value.length, ingested: ok };
+    summary.gmarket = { count: gmarketResult.value.length, ingested: ok, debug: gmarketResult.value._debug };
   } else {
     summary.gmarket = { error: gmarketResult.reason?.message || String(gmarketResult.reason) };
   }
@@ -168,10 +168,11 @@ function waitForTabComplete(tabId) {
 }
 
 async function collectGmarket() {
-  const tab = await chrome.tabs.create({ url: 'https://m.gmarket.co.kr/n/live/schedule', active: false });
+  // Cloudflare가 백그라운드(비활성) 탭을 의심할 수 있어 실제로 포커스를 주는 활성 탭으로 연다
+  const tab = await chrome.tabs.create({ url: 'https://m.gmarket.co.kr/n/live/schedule', active: true });
   try {
     await waitForTabComplete(tab.id);
-    await new Promise((r) => setTimeout(r, 1500)); // 클라이언트 JS 안정화 대기
+    await new Promise((r) => setTimeout(r, 2500)); // 클라이언트 JS 안정화 대기
 
     const injection = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
@@ -179,14 +180,24 @@ async function collectGmarket() {
         try {
           const sched = window.__NEXT_DATA__?.props?.pageProps?.initialStates?.schedule;
           const catalogs = sched?.liveCatalogs || [];
-          return catalogs.flatMap((c) => c.lives || []);
+          const lives = catalogs.flatMap((c) => c.lives || []);
+          return {
+            lives,
+            debug: {
+              title: document.title,
+              url: location.href,
+              hasNextData: !!window.__NEXT_DATA__,
+              bodyPreview: document.body?.innerText?.slice(0, 200) || '',
+            },
+          };
         } catch (e) {
-          return [];
+          return { lives: [], debug: { error: e.message } };
         }
       },
     });
 
-    const rawLives = injection?.[0]?.result || [];
+    const payload = injection?.[0]?.result || { lives: [], debug: {} };
+    const rawLives = payload.lives || [];
     const seen = new Set();
     const items = [];
     rawLives.forEach((item) => {
@@ -196,6 +207,7 @@ async function collectGmarket() {
         items.push(card);
       }
     });
+    items._debug = payload.debug;
     return items;
   } finally {
     chrome.tabs.remove(tab.id).catch(() => {});
