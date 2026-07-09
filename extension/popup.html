@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>BUY NOW OR LIVE 수집기</title>
+<style>
+  body { width: 320px; font-family: -apple-system, "Segoe UI", sans-serif; padding: 12px; }
+  h1 { font-size: 14px; margin: 0 0 10px; }
+  label { display: block; font-size: 12px; color: #555; margin-bottom: 4px; }
+  input[type="password"] { width: 100%; box-sizing: border-box; padding: 6px; margin-bottom: 8px; }
+  button { width: 100%; padding: 8px; cursor: pointer; }
+  #status { margin-top: 10px; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
+</style>
+</head>
+<body>
+  <h1>BUY NOW OR LIVE 스케줄 수집기</h1>
+  <label for="secret">INGEST_SECRET</label>
+  <input type="password" id="secret" placeholder="시크릿 값 입력" />
+  <button id="save">저장</button>
+  <button id="runNow" style="margin-top:6px;">지금 바로 수집</button>
+  <div id="status"></div>
+  <script src="popup.js"></script>
+</body>
+</html>
