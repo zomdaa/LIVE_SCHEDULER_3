@@ -176,18 +176,23 @@ async function collectGmarket() {
 
     const injection = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
+      world: 'MAIN', // window.__NEXT_DATA__ 는 페이지 자체 스크립트가 만든 값이라 MAIN world에서 읽어야 함
       func: () => {
         try {
-          const sched = window.__NEXT_DATA__?.props?.pageProps?.initialStates?.schedule;
+          const nd = window.__NEXT_DATA__;
+          const pageProps = nd?.props?.pageProps;
+          const sched = pageProps?.initialStates?.schedule;
           const catalogs = sched?.liveCatalogs || [];
           const lives = catalogs.flatMap((c) => c.lives || []);
           return {
             lives,
             debug: {
-              title: document.title,
-              url: location.href,
-              hasNextData: !!window.__NEXT_DATA__,
-              bodyPreview: document.body?.innerText?.slice(0, 200) || '',
+              hasNextData: !!nd,
+              hasPageProps: !!pageProps,
+              pagePropsKeys: pageProps ? Object.keys(pageProps) : [],
+              hasSchedule: !!sched,
+              catalogCount: catalogs.length,
+              livesCount: lives.length,
             },
           };
         } catch (e) {
