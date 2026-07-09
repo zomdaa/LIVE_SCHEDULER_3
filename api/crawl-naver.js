@@ -62,11 +62,19 @@ async function fetchDaySchedule(anchorTimestamp, includeCurrent) {
     }
   };
 
-  const r = await fetch(GATEWAY + '/v1/calendar/broadcast/timeline/current?' + new URLSearchParams({
+  let r = await fetch(GATEWAY + '/v1/calendar/broadcast/timeline/current?' + new URLSearchParams({
     timestamp: String(anchorTimestamp),
     size: String(PAGE_SIZE),
   }), { headers: naverHeaders() });
-  if (!r.ok) return items;
+  if (!r.ok) {
+    // 병렬 요청 버스트에 대한 일시적 레이트리밋으로 추정되는 실패는 한 번 재시도
+    await new Promise(resolve => setTimeout(resolve, 400));
+    r = await fetch(GATEWAY + '/v1/calendar/broadcast/timeline/current?' + new URLSearchParams({
+      timestamp: String(anchorTimestamp),
+      size: String(PAGE_SIZE),
+    }), { headers: naverHeaders() });
+    if (!r.ok) return items;
+  }
   const data = await r.json();
 
   if (includeCurrent && data.currentBroadcast) addCard(data.currentBroadcast);
@@ -97,7 +105,10 @@ async function fetchRawSchedule() {
     anchors.push(i === 0 ? Date.now() : kstMidnightTimestamp(i));
   }
 
-  const results = await Promise.all(anchors.map((ts, idx) => fetchDaySchedule(ts, idx === 0)));
+  // 7개 요청을 동시에 터뜨리면 게이트웨이가 일부를 레이트리밋하는 경향이 있어 살짝 간격을 두고 시작한다
+  const results = await Promise.all(anchors.map((ts, idx) =>
+    new Promise(resolve => setTimeout(resolve, idx * 150)).then(() => fetchDaySchedule(ts, idx === 0))
+  ));
 
   const seen = new Set();
   const items = [];
