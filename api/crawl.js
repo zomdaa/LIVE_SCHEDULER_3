@@ -1,0 +1,613 @@
+import { kv } from '@vercel/kv';
+
+// 네이버/카카오/SSG/11번가/올리브영/G마켓 라이브 스케줄을 라방바 없이 각 플랫폼에서
+// 직접 가져오는 통합 엔드포인트. Vercel Hobby 플랜의 서버리스 함수 12개 제한 때문에
+// 원래 개별 파일(api/crawl-*.js)이었던 것들을 여기 하나로 합쳤다.
+// 사용법: GET /api/crawl?platform=naver|kakao|ssg|11st|oliveyoung|gmarket&keyword=...
+
+const CACHE_TTL = 300; // 5분
+const MAX_CONCURRENT = 5;
+
+// ---------------------------------------------------------------------------
+// 네이버 쇼핑라이브
+// (shoppinglive.naver.com /calendar 페이지가 사용하는 API)
+// timeline/next 커서 페이지네이션을 "지금"부터 이어가면 당일 스케줄이 끝나는
+// 시점(cursor=null)에서 멈춰버려 다음날 이후 데이터를 못 가져온다. timestamp
+// 파라미터에 미래 시각을 직접 넣어 호출하면 그 날짜의 스케줄이 정상 반환되는
+// 것을 확인했다 - 오늘~+21일 각 날짜의 KST 자정을 anchor timestamp로 개별 조회.
+const NAVER_GATEWAY = 'https://apis.naver.com/selectiveweb/live_commerce_web';
+const NAVER_ROUTING_KEY = 'real-home-api';
+const NAVER_PAGE_SIZE = 30;
+const NAVER_MAX_PAGES_PER_DAY = 10;
+const NAVER_RANGE_DAYS = 21; // 실측 결과 이 지점부터 방송이 거의 0건으로 수렴함
+
+function naverHeaders() {
+  return {
+    'Accept': 'application/json',
+    'apigw-routing-key': NAVER_ROUTING_KEY,
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Referer': 'https://shoppinglive.naver.com/calendar',
+  };
+}
+
+function naverToCard(entry) {
+  if (!entry || !entry.broadcast) return null;
+  const b = entry.broadcast;
+  return {
+    id: b.id,
+    title: b.title,
+    platform: '네이버쇼핑라이브',
+    channel: entry.owner?.name || '',
+    start: b.expectedStartDate || b.startDate || null,
+    end: b.expectedEndDate || b.endDate || null,
+    status: b.status,
+    url: b.endUrl || ('https://shoppinglive.naver.com/lives/' + b.id),
+  };
+}
+
+function kstMidnightTimestamp(dayOffset) {
+  const shifted = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  shifted.setUTCDate(shifted.getUTCDate() + dayOffset);
+  shifted.setUTCHours(0, 0, 0, 0);
+  return shifted.getTime() - 9 * 60 * 60 * 1000;
+}
+
+async function naverFetchDay(anchorTimestamp, includeCurrent) {
+  const items = [];
+  const seen = new Set();
+  const addCard = (entry) => {
+    const card = naverToCard(entry);
+    if (card && card.id && !seen.has(card.id)) {
+      seen.add(card.id);
+      items.push(card);
+    }
+  };
+
+  let r = await fetch(NAVER_GATEWAY + '/v1/calendar/broadcast/timeline/current?' + new URLSearchParams({
+    timestamp: String(anchorTimestamp),
+    size: String(NAVER_PAGE_SIZE),
+  }), { headers: naverHeaders() });
+  if (!r.ok) {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    r = await fetch(NAVER_GATEWAY + '/v1/calendar/broadcast/timeline/current?' + new URLSearchParams({
+      timestamp: String(anchorTimestamp),
+      size: String(NAVER_PAGE_SIZE),
+    }), { headers: naverHeaders() });
+    if (!r.ok) return items;
+  }
+  const data = await r.json();
+
+  if (includeCurrent && data.currentBroadcast) addCard(data.currentBroadcast);
+  (data.nextBroadcasts?.list || []).forEach(addCard);
+
+  let cursor = data.nextBroadcasts?.next || null;
+  let page = 0;
+  while (cursor && page < NAVER_MAX_PAGES_PER_DAY) {
+    page++;
+    const nr = await fetch(NAVER_GATEWAY + '/v1/calendar/broadcast/timeline/next?' + new URLSearchParams({
+      next: cursor,
+      size: String(NAVER_PAGE_SIZE),
+    }), { headers: naverHeaders() });
+    if (!nr.ok) break;
+    const nd = await nr.json();
+    const list = nd.list || [];
+    list.forEach(addCard);
+    cursor = nd.next || null;
+    if (list.length === 0) break;
+  }
+
+  return items;
+}
+
+async function fetchNaverRaw() {
+  const anchors = [];
+  for (let i = 0; i <= NAVER_RANGE_DAYS; i++) {
+    anchors.push(i === 0 ? Date.now() : kstMidnightTimestamp(i));
+  }
+
+  // 요청을 동시에 터뜨리면 게이트웨이가 일부를 레이트리밋하는 경향이 있어 살짝 간격을 두고 시작한다
+  const results = await Promise.all(anchors.map((ts, idx) =>
+    new Promise(resolve => setTimeout(resolve, idx * 150)).then(() => naverFetchDay(ts, idx === 0))
+  ));
+
+  const seen = new Set();
+  const items = [];
+  results.flat().forEach(card => {
+    if (card.id && !seen.has(card.id)) {
+      seen.add(card.id);
+      items.push(card);
+    }
+  });
+  return items;
+}
+
+// ---------------------------------------------------------------------------
+// 카카오쇼핑라이브
+// (shoppinglive.kakao.com /calendar 페이지가 사용하는 API,
+// shoppinglive.kakao.com 이 kamp.kakao.com 으로 리버스 프록시하므로 same-origin 으로 호출)
+const KAKAO_GATEWAY = 'https://shoppinglive.kakao.com';
+const KAKAO_PAGE_SIZE = 50;
+const KAKAO_MAX_PAGES_PER_DAY = 10;
+const KAKAO_RANGE_DAYS = 21; // 실측 결과 이 지점부터 방송이 거의 0건으로 수렴함
+
+function kakaoHeaders() {
+  return {
+    'Accept': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Referer': 'https://shoppinglive.kakao.com/calendar',
+  };
+}
+
+function kstYmd(kstDate) {
+  const y = kstDate.getUTCFullYear();
+  const m = String(kstDate.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(kstDate.getUTCDate()).padStart(2, '0');
+  return `${y}${m}${d}`;
+}
+
+function kakaoToIso(str) {
+  if (!str || str.length < 12) return null;
+  const y = str.slice(0, 4), mo = str.slice(4, 6), d = str.slice(6, 8);
+  const h = str.slice(8, 10), mi = str.slice(10, 12), s = str.slice(12, 14) || '00';
+  return `${y}-${mo}-${d}T${h}:${mi}:${s}`;
+}
+
+function kakaoToCard(item) {
+  return {
+    id: item.liveContentId,
+    title: (item.displayTitle || '').replace(/\n/g, ' '),
+    platform: '카카오쇼핑라이브',
+    channel: item.liveDisplaySaleChannel?.name || '',
+    start: kakaoToIso(item.liveStartAt),
+    end: null,
+    status: item.liveStatus,
+    url: item.landingUrl || ('https://shoppinglive.kakao.com/live/' + item.liveContentId),
+  };
+}
+
+async function kakaoFetchDay(dayStr) {
+  const items = [];
+  let cursor = '';
+  let page = 0;
+  while (page < KAKAO_MAX_PAGES_PER_DAY) {
+    page++;
+    const params = new URLSearchParams({
+      tabId: 'ALL',
+      displayFrom: dayStr,
+      displayTo: dayStr,
+      size: String(KAKAO_PAGE_SIZE),
+    });
+    if (cursor) params.set('cursor', cursor);
+
+    let r = await fetch(KAKAO_GATEWAY + '/api/v2/live-calendar?' + params, { headers: kakaoHeaders() });
+    if (!r.ok) {
+      await new Promise(resolve => setTimeout(resolve, 400));
+      r = await fetch(KAKAO_GATEWAY + '/api/v2/live-calendar?' + params, { headers: kakaoHeaders() });
+      if (!r.ok) break;
+    }
+    const data = await r.json();
+    const contents = data.contents || [];
+    contents.forEach(item => {
+      if (item.liveStatus !== 'NO_SHOW') items.push(kakaoToCard(item));
+    });
+
+    if (data.last || !data.nextCursor || contents.length === 0) break;
+    cursor = data.nextCursor;
+  }
+  return items;
+}
+
+async function fetchKakaoRaw() {
+  const days = [];
+  const now = new Date(Date.now() + 9 * 60 * 60 * 1000); // KST로 shift된 시각
+  for (let i = 0; i <= KAKAO_RANGE_DAYS; i++) {
+    const d = new Date(now);
+    d.setUTCDate(now.getUTCDate() + i);
+    days.push(kstYmd(d));
+  }
+
+  const results = await Promise.all(days.map((day, idx) =>
+    new Promise(resolve => setTimeout(resolve, idx * 150)).then(() => kakaoFetchDay(day))
+  ));
+  const seen = new Set();
+  const items = [];
+  results.flat().forEach(card => {
+    if (card.id && !seen.has(card.id)) {
+      seen.add(card.id);
+      items.push(card);
+    }
+  });
+  return items;
+}
+
+// ---------------------------------------------------------------------------
+// SSG.LIVE
+// (m.ssg.com 의 "라이브 예고" 탭. Next.js SSR로 렌더링되며 __NEXT_DATA__ 안에
+// 예정 방송 목록이 이미 포함되어 있어 별도 API 호출 없이 HTML 한 번으로 충분)
+const SSG_SCHEDULE_URL = 'https://m.ssg.com/page/ssglive/next';
+
+function ssgHeaders() {
+  return {
+    'Accept': 'text/html',
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+  };
+}
+
+function ssgToIso(str) {
+  if (!str) return null;
+  return str.trim().replace(' ', 'T');
+}
+
+function ssgToCard(item) {
+  return {
+    id: item.id,
+    title: item.title || item.mainTitle1 || '',
+    platform: 'SSG라이브',
+    channel: item.repItemBrandNm || item.brandName || '',
+    start: ssgToIso(item.liveStartDate || item.subTitle1),
+    end: ssgToIso(item.liveEndDate || item.subTitle2),
+    status: 'BEFORE',
+    url: item.liveDetailLink || item.livePlayerLink || item.linkUrl || '',
+  };
+}
+
+// __NEXT_DATA__ 트리를 재귀 탐색해서 dataType이 SSG_LIVE인 컴포넌트의 bannerList를 모두 수집
+function collectSsgBannerLists(node, out) {
+  if (!node || typeof node !== 'object') return;
+  if (Array.isArray(node)) {
+    for (const child of node) collectSsgBannerLists(child, out);
+    return;
+  }
+  if (node.dataType === 'SSG_LIVE' && Array.isArray(node.bannerList)) {
+    out.push(...node.bannerList);
+  }
+  for (const key of Object.keys(node)) {
+    if (key === 'bannerList') continue;
+    collectSsgBannerLists(node[key], out);
+  }
+}
+
+async function fetchSsgRaw() {
+  const r = await fetch(SSG_SCHEDULE_URL, { headers: ssgHeaders() });
+  if (!r.ok) throw new Error('ssg live page failed: ' + r.status);
+  const html = await r.text();
+
+  const startTag = '__NEXT_DATA__" type="application/json"';
+  const idx = html.indexOf(startTag);
+  if (idx === -1) throw new Error('ssg __NEXT_DATA__ not found');
+  const scriptStart = html.indexOf('>', idx) + 1;
+  const scriptEnd = html.indexOf('</script>', scriptStart);
+  const nextData = JSON.parse(html.slice(scriptStart, scriptEnd));
+
+  const banners = [];
+  collectSsgBannerLists(nextData, banners);
+
+  const seen = new Set();
+  const items = [];
+  for (const item of banners) {
+    const card = ssgToCard(item);
+    if (card.id && !seen.has(card.id)) {
+      seen.add(card.id);
+      items.push(card);
+    }
+  }
+  return items;
+}
+
+// ---------------------------------------------------------------------------
+// 11번가 LIVE11
+// (m.11st.co.kr 의 "편성표" 페이지: /page/sub?pageId=LIVE11TIMETBLPAGE)
+// 범용 PUI(페이지 빌더) 시스템을 사용하며, 최초 호출로 오늘 스케줄 + 날짜별
+// 방송 개수(캐러셀 탭)를 받고, 방송이 있는(broadcastCount>0) 날짜만 carrSn을
+// 재사용해 selectDate로 개별 조회한다. (broadcastCount가 0인 날짜를 조회하면
+// 서버가 조용히 "오늘" 데이터로 폴백하므로 반드시 스킵해야 함. 날짜 범위는
+// 하드코딩하지 않고 편성표 탭이 실제로 제공하는 폭(-7일~+14일)을 그대로 따른다)
+const ST11_BASE = 'https://apis.11st.co.kr/pui/v2/page';
+const ST11_PAGE_ID = 'LIVE11TIMETBLPAGE';
+
+function headers11st() {
+  return {
+    'Accept': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    'Referer': 'https://m.11st.co.kr/page/sub?pageId=LIVE11TIMETBLPAGE',
+  };
+}
+
+// data: [ {carrSn, type, blockList:[{type, list:[...]}, ...]}, ... ] 형태를 재귀 탐색해서
+// 주어진 block type의 list 항목들을 모두 수집
+function collectBlockLists(node, type, out) {
+  if (!node || typeof node !== 'object') return;
+  if (Array.isArray(node)) {
+    for (const child of node) collectBlockLists(child, type, out);
+    return;
+  }
+  if (node.type === type && Array.isArray(node.list)) {
+    out.push(...node.list);
+  }
+  for (const key of Object.keys(node)) {
+    if (key === 'list') continue;
+    collectBlockLists(node[key], type, out);
+  }
+}
+
+function nowKST() {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000);
+}
+
+function mToD(kstDate) {
+  return `${kstDate.getUTCMonth() + 1}.${kstDate.getUTCDate()}`;
+}
+
+function st11ToCard(item, kstDate) {
+  const y = kstDate.getUTCFullYear();
+  const m = String(kstDate.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(kstDate.getUTCDate()).padStart(2, '0');
+  const time = /^\d{1,2}:\d{2}$/.test(item.liveTime || '') ? item.liveTime : (item.liveScheduleTime || '00:00');
+  return {
+    id: item.broadcastNo,
+    title: item.title || '',
+    platform: '11번가 라이브11',
+    channel: item.channelInfo?.title || '',
+    start: `${y}-${m}-${d}T${time.padStart(5, '0')}:00`,
+    end: null,
+    status: item.liveStatus || '',
+    url: item.liveDetailsUrl ? item.liveDetailsUrl.replace(/^http:/, 'https:') : '',
+  };
+}
+
+async function st11FetchTodayAndTabs() {
+  const r = await fetch(`${ST11_BASE}?pageId=${ST11_PAGE_ID}`, { headers: headers11st() });
+  if (!r.ok) throw new Error('11st timetable page failed: ' + r.status);
+  const json = await r.json();
+
+  const tabs = [];
+  collectBlockLists(json.data, 'Tabs_TimeTable', tabs);
+  const products = [];
+  collectBlockLists(json.data, 'ProductList_Live11', products);
+
+  let carrSn = null;
+  const findCarrSn = (node) => {
+    if (!node || typeof node !== 'object' || carrSn) return;
+    if (Array.isArray(node)) { node.forEach(findCarrSn); return; }
+    if (node.type === 'Tabs_TimeTable') { carrSn = node.carrSn; return; }
+    Object.values(node).forEach(findCarrSn);
+  };
+  findCarrSn(json.data);
+
+  return { tabs, products, carrSn };
+}
+
+async function st11FetchDay(carrSn, dateObj) {
+  const dayStr = kstYmd(dateObj);
+  let r = await fetch(`${ST11_BASE}?pageId=${ST11_PAGE_ID}&carrSn=${carrSn}&selectDate=${dayStr}`, { headers: headers11st() });
+  if (!r.ok) {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    r = await fetch(`${ST11_BASE}?pageId=${ST11_PAGE_ID}&carrSn=${carrSn}&selectDate=${dayStr}`, { headers: headers11st() });
+    if (!r.ok) return [];
+  }
+  const json = await r.json();
+  const products = [];
+  collectBlockLists(json.data, 'ProductList_Live11', products);
+  return products;
+}
+
+async function fetch11stRaw() {
+  const { tabs, products, carrSn } = await st11FetchTodayAndTabs();
+
+  const now = nowKST();
+  const items = [];
+  const seen = new Set();
+  const addAll = (list, dateObj) => {
+    list.forEach(item => {
+      const card = st11ToCard(item, dateObj);
+      if (card.id && !seen.has(card.id)) {
+        seen.add(card.id);
+        items.push(card);
+      }
+    });
+  };
+
+  // 오늘은 이미 받아온 데이터를 재사용
+  addAll(products, now);
+
+  // 탭 목록(-7일~+14일 고정 폭)에서 오늘 이후이고 방송이 있는 날짜만 골라 개별 조회.
+  // 배열 위치(= 오늘로부터의 실제 날짜 오프셋)를 필터링 전에 매겨둬야 날짜가 밀리지 않는다
+  const todayLabel = mToD(now);
+  const todayIdx = tabs.findIndex(t => t.date === todayLabel);
+  const futureDays = [];
+  if (todayIdx !== -1) {
+    for (let i = todayIdx + 1; i < tabs.length; i++) {
+      if (tabs[i].broadcastCount > 0) {
+        const d = new Date(now);
+        d.setUTCDate(now.getUTCDate() + (i - todayIdx));
+        futureDays.push(d);
+      }
+    }
+  }
+
+  if (carrSn && futureDays.length > 0) {
+    const results = await Promise.all(futureDays.map((d, idx) =>
+      new Promise(resolve => setTimeout(resolve, idx * 150)).then(() => st11FetchDay(carrSn, d))
+    ));
+    results.forEach((list, idx) => addAll(list, futureDays[idx]));
+  }
+
+  return items;
+}
+
+// ---------------------------------------------------------------------------
+// 올리브영 라이브
+// (m.oliveyoung.co.kr 의 "라이브" 탭 편성표. 날짜별 방송 상세는 viewStdDate
+// 파라미터가 YYYYMMDD 형식이어야 동작함. Vercel 서버 IP가 올리브영 WAF에
+// 막혀 있어 실제로는 브라우저 확장프로그램이 /api/ingest 로 채워주는
+// KV 캐시에 의존한다 - 아래 fetch는 캐시가 비어 있을 때의 보조 시도일 뿐)
+const OY_BASE = 'https://m.oliveyoung.co.kr/discovery/api/v2/live-shop/display/broadcast-calendar';
+const OY_RANGE_DAYS = 14; // 편성표 캘린더가 실제로 제공하는 폭
+
+function oyHeaders() {
+  return {
+    'Accept': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    'Referer': 'https://m.oliveyoung.co.kr/m/mtn/liveshop',
+  };
+}
+
+function oyToCard(item) {
+  const live = item.liveCastingInformation || {};
+  return {
+    id: item.teaserNo,
+    title: item.title || '',
+    platform: '올리브영 라이브',
+    channel: item.productsInformation?.onlineBrandName || '',
+    start: live.castingStartDateTime || live.reservedStartDateTime || null,
+    end: live.castingEndDateTime || live.reservedEndDateTime || null,
+    status: live.onAirFlag ? 'ONAIR' : 'BEFORE',
+    url: item.linkUrlAddress ? ('https://m.oliveyoung.co.kr/m/' + item.linkUrlAddress) : '',
+  };
+}
+
+async function oyFetchDay(dayStr) {
+  let r = await fetch(OY_BASE + '/detail?viewStdDate=' + dayStr, { headers: oyHeaders() });
+  if (!r.ok) {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    r = await fetch(OY_BASE + '/detail?viewStdDate=' + dayStr, { headers: oyHeaders() });
+    if (!r.ok) return [];
+  }
+  const json = await r.json();
+  const items = json?.data?.scheduleItems;
+  if (!Array.isArray(items)) return [];
+  return items.map(oyToCard);
+}
+
+async function fetchOliveyoungRaw() {
+  const days = [];
+  const now = new Date(Date.now() + 9 * 60 * 60 * 1000); // KST로 shift된 시각
+  for (let i = 0; i <= OY_RANGE_DAYS; i++) {
+    const d = new Date(now);
+    d.setUTCDate(now.getUTCDate() + i);
+    days.push(kstYmd(d));
+  }
+
+  const results = await Promise.all(days.map((day, idx) =>
+    new Promise(resolve => setTimeout(resolve, idx * 150)).then(() => oyFetchDay(day))
+  ));
+  const seen = new Set();
+  const items = [];
+  results.flat().forEach(card => {
+    if (card.id && !seen.has(card.id)) {
+      seen.add(card.id);
+      items.push(card);
+    }
+  });
+  return items;
+}
+
+// ---------------------------------------------------------------------------
+// G마켓 라이브
+// (m.gmarket.co.kr/n/live/schedule 의 __NEXT_DATA__ 안에 오늘 기준 -3일~+7일
+// 전체 스케줄이 이미 포함되어 있음을 실제 브라우저로 확인했다. 하지만 이
+// 도메인 전체가 Cloudflare Managed Challenge로 보호되어 있어 서버사이드
+// fetch는 항상 403으로 막힌다 (실제 확인함) - 브라우저 확장프로그램이
+// /api/ingest 로 채워주는 KV 캐시를 읽기만 한다. 직접 fetch는 시도하지 않음.
+function gmarketToCard(item) {
+  return {
+    id: item.broadcastSeq,
+    title: item.broadcastTitle || '',
+    platform: 'G마켓 라이브',
+    channel: item.seller?.name || '',
+    start: item.broadcastStartDate || null,
+    end: item.broadcastEndDate || null,
+    status: item.broadcastStatus || '',
+    url: item.landingUrl || '',
+  };
+}
+
+async function fetchGmarketRaw() {
+  // Cloudflare에 막혀 서버사이드로는 수집 불가 - 항상 빈 배열 (ingest로만 채워짐)
+  return [];
+}
+
+// ---------------------------------------------------------------------------
+
+const PLATFORMS = {
+  naver: { cacheKey: 'crawl-naver:raw', label: '네이버쇼핑라이브', fetchRaw: fetchNaverRaw },
+  kakao: { cacheKey: 'crawl-kakao:raw', label: '카카오쇼핑라이브', fetchRaw: fetchKakaoRaw },
+  ssg: { cacheKey: 'crawl-ssg:raw', label: 'SSG라이브', fetchRaw: fetchSsgRaw },
+  '11st': { cacheKey: 'crawl-11st:raw', label: '11번가 라이브11', fetchRaw: fetch11stRaw },
+  oliveyoung: { cacheKey: 'crawl-oliveyoung:raw', label: '올리브영 라이브', fetchRaw: fetchOliveyoungRaw },
+  gmarket: { cacheKey: 'crawl-gmarket:raw', label: 'G마켓 라이브', fetchRaw: fetchGmarketRaw },
+};
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const { platform, keyword } = req.query;
+  const config = PLATFORMS[platform];
+  if (!config) {
+    return res.status(400).json({ error: 'platform must be one of: ' + Object.keys(PLATFORMS).join(', ') });
+  }
+  const cleanKeyword = keyword ? String(keyword).trim() : '';
+
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+  const rateKey = 'rate:' + ip;
+  try {
+    const count = await kv.incr(rateKey);
+    if (count === 1) await kv.expire(rateKey, 60);
+    if (count > 20) {
+      return res.status(429).json({ error: '요청이 너무 많아요. 잠시 후 다시 시도해주세요.' });
+    }
+  } catch (e) {}
+
+  let rawItems = null;
+  try {
+    rawItems = await kv.get(config.cacheKey);
+  } catch (e) {}
+
+  const concurrencyKey = 'active-crawl:' + platform;
+  let concurrencySlotTaken = false;
+  try {
+    if (!rawItems) {
+      const activeCount = await kv.incr(concurrencyKey);
+      if (activeCount === 1) await kv.expire(concurrencyKey, 30);
+      if (activeCount > MAX_CONCURRENT) {
+        await kv.decr(concurrencyKey);
+        return res.status(429).json({ error: '지금 갑자기 많은 분들이 검색 중이에요..! 잠시 후 다시 시도해봐주세요!' });
+      }
+      concurrencySlotTaken = true;
+    }
+  } catch (e) {}
+
+  try {
+    if (!rawItems) {
+      rawItems = await config.fetchRaw();
+      // 빈 결과를 캐싱하면 일시적 실패가 5분간 그대로 굳어버리니, 뭔가 있을 때만 저장한다
+      if (rawItems.length > 0) {
+        try {
+          await kv.set(config.cacheKey, rawItems, { ex: CACHE_TTL });
+        } catch (e) {}
+      }
+    }
+
+    let upcoming = rawItems;
+    if (cleanKeyword) {
+      const kwTerms = cleanKeyword.toLowerCase().split(/\s+/).filter(Boolean);
+      upcoming = rawItems.filter(item => {
+        if (!item.title) return false;
+        const title = item.title.toLowerCase();
+        return kwTerms.every(term => title.includes(term));
+      });
+    }
+
+    upcoming = [...upcoming].sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+
+    res.status(200).json({ upcoming, total: upcoming.length, keyword: cleanKeyword, platform: config.label });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  } finally {
+    if (concurrencySlotTaken) {
+      try { await kv.decr(concurrencyKey); } catch (e) {}
+    }
+  }
+}

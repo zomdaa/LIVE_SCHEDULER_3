@@ -1,8 +1,0 @@
-{
-  "name": "live-scheduler-scrapers",
-  "private": true,
-  "type": "commonjs",
-  "dependencies": {
-    "playwright": "^1.47.0"
-  }
-}
