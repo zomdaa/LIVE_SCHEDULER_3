@@ -895,6 +895,12 @@ function setStatus(msg, loading) {
 
 function parseLabangDate(str) {
   if (!str || str.length < 8) return null;
+  // 6개 플랫폼 직접 크롤러는 ISO 형식("2026-07-09T20:00:00")을 쓰고,
+  // 라방바 쪽은 숫자만 있는 자체 형식("2607092000")을 쓴다 - 둘 다 처리
+  if (str.includes('-')) {
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  }
   const yy = str.slice(0, 2), mm = str.slice(2, 4), dd = str.slice(4, 6);
   const hh = str.slice(6, 8), mi = str.slice(8, 10) || '00';
   return new Date(`20${yy}-${mm}-${dd}T${hh}:${mi}:00`);
@@ -1098,16 +1104,21 @@ async function doSearch() {
   setStatus(`최저가 혜택을 위해 열심히 찾는 중..!`, true);
 
   try {
-    const [schedRes, searchRes] = await Promise.all([
-      fetch(`/api/schedule?keyword=${encodeURIComponent(keyword)}`),
+    const CRAWL_PLATFORMS = ['naver', 'kakao', 'ssg', '11st', 'oliveyoung', 'gmarket'];
+    const [crawlResults, searchRes] = await Promise.all([
+      Promise.all(CRAWL_PLATFORMS.map(p =>
+        fetch(`/api/crawl?platform=${p}&keyword=${encodeURIComponent(keyword)}`)
+          .then(r => r.ok ? r.json() : { upcoming: [] })
+          .catch(() => ({ upcoming: [] }))
+      )),
       fetch(`/api/search?keyword=${encodeURIComponent(keyword)}`),
     ]);
 
-    const schedData = await schedRes.json();
+    const schedData = { upcoming: crawlResults.flatMap(r => r.upcoming || []) };
     const searchData = await searchRes.json();
 
-    if (!schedRes.ok || !searchRes.ok) {
-      const msg = (!schedRes.ok && schedData.error) || (!searchRes.ok && searchData.error) || '잠시 후 다시 시도해주세요.';
+    if (!searchRes.ok) {
+      const msg = searchData.error || '잠시 후 다시 시도해주세요.';
       setStatus(msg);
       resultEl.innerHTML = '';
       return;

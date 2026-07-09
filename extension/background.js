@@ -87,6 +87,22 @@ function ymd(date) {
   return `${y}${m}${d}`;
 }
 
+// 올리브영 API는 UTC(Z suffix)로 내려주는데, 다른 플랫폼들은 전부 KST naive
+// 문자열이라 프론트엔드에서 통일해서 정렬/비교할 수 있도록 형식을 맞춘다
+function utcToKstNaive(utcStr) {
+  if (!utcStr) return null;
+  const d = new Date(utcStr);
+  if (isNaN(d.getTime())) return null;
+  const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  const y = kst.getUTCFullYear();
+  const m = String(kst.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(kst.getUTCDate()).padStart(2, '0');
+  const h = String(kst.getUTCHours()).padStart(2, '0');
+  const mi = String(kst.getUTCMinutes()).padStart(2, '0');
+  const s = String(kst.getUTCSeconds()).padStart(2, '0');
+  return `${y}-${m}-${day}T${h}:${mi}:${s}`;
+}
+
 function oyToCard(item) {
   const live = item.liveCastingInformation || {};
   return {
@@ -94,8 +110,8 @@ function oyToCard(item) {
     title: item.title || '',
     platform: '올리브영 라이브',
     channel: item.productsInformation?.onlineBrandName || '',
-    start: live.castingStartDateTime || live.reservedStartDateTime || null,
-    end: live.castingEndDateTime || live.reservedEndDateTime || null,
+    start: utcToKstNaive(live.castingStartDateTime || live.reservedStartDateTime),
+    end: utcToKstNaive(live.castingEndDateTime || live.reservedEndDateTime),
     status: live.onAirFlag ? 'ONAIR' : 'BEFORE',
     url: item.linkUrlAddress ? ('https://m.oliveyoung.co.kr/m/' + item.linkUrlAddress) : '',
   };
