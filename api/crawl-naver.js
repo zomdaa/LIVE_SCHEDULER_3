@@ -12,7 +12,7 @@ const GATEWAY = 'https://apis.naver.com/selectiveweb/live_commerce_web';
 const ROUTING_KEY = 'real-home-api';
 const PAGE_SIZE = 30; // 서버측 상한 (그 이상이면 400 에러)
 const MAX_PAGES_PER_DAY = 10; // 하루 안에서 커서 페이지네이션 상한 (무한루프 방지)
-const RANGE_DAYS = 6; // 오늘 ~ +6일 (라방바 스케줄 API와 동일한 범위)
+const RANGE_DAYS = 21; // 오늘 ~ +21일 (실측 결과 이 지점부터 방송이 거의 0건으로 수렴함)
 const CACHE_KEY = 'crawl-naver:raw';
 const CACHE_TTL = 300; // 5분
 

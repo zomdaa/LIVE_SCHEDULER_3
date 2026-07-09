@@ -4,7 +4,7 @@ import { kv } from '@vercel/kv';
 // 날짜별 방송 상세는 viewStdDate 파라미터가 YYYYMMDD 형식이어야 동작한다
 // (달력 요약 API의 date 필드는 "YYYY-MM-DD" 로 표시되지만 detail 호출 시 대시 없는 형식을 요구함)
 const BASE = 'https://m.oliveyoung.co.kr/discovery/api/v2/live-shop/display/broadcast-calendar';
-const RANGE_DAYS = 6; // 오늘 ~ +6일
+const RANGE_DAYS = 14; // 오늘 ~ +14일 (편성표 캘린더가 실제로 제공하는 폭)
 const CACHE_KEY = 'crawl-oliveyoung:raw';
 const CACHE_TTL = 300; // 5분
 
@@ -19,10 +19,11 @@ function oyHeaders() {
   };
 }
 
-function ymd(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+// Vercel 서버는 UTC로 동작하므로 KST(UTC+9) 날짜를 명시적으로 계산한다
+function ymd(kstDate) {
+  const y = kstDate.getUTCFullYear();
+  const m = String(kstDate.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(kstDate.getUTCDate()).padStart(2, '0');
   return `${y}${m}${d}`;
 }
 
@@ -41,8 +42,12 @@ function toCard(item) {
 }
 
 async function fetchDaySchedule(dayStr) {
-  const r = await fetch(BASE + '/detail?viewStdDate=' + dayStr, { headers: oyHeaders() });
-  if (!r.ok) return [];
+  let r = await fetch(BASE + '/detail?viewStdDate=' + dayStr, { headers: oyHeaders() });
+  if (!r.ok) {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    r = await fetch(BASE + '/detail?viewStdDate=' + dayStr, { headers: oyHeaders() });
+    if (!r.ok) return [];
+  }
   const json = await r.json();
   const items = json?.data?.scheduleItems;
   if (!Array.isArray(items)) return [];
@@ -51,14 +56,17 @@ async function fetchDaySchedule(dayStr) {
 
 async function fetchRawSchedule() {
   const days = [];
-  const now = new Date();
+  const now = new Date(Date.now() + 9 * 60 * 60 * 1000); // KST로 shift된 시각
   for (let i = 0; i <= RANGE_DAYS; i++) {
     const d = new Date(now);
-    d.setDate(now.getDate() + i);
+    d.setUTCDate(now.getUTCDate() + i);
     days.push(ymd(d));
   }
 
-  const results = await Promise.all(days.map(fetchDaySchedule));
+  // 요청을 동시에 터뜨리면 레이트리밋에 걸릴 수 있어 살짝 간격을 두고 시작한다
+  const results = await Promise.all(days.map((day, idx) =>
+    new Promise(resolve => setTimeout(resolve, idx * 150)).then(() => fetchDaySchedule(day))
+  ));
   const seen = new Set();
   const items = [];
   results.flat().forEach(card => {

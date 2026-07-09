@@ -5,7 +5,7 @@ import { kv } from '@vercel/kv';
 const GATEWAY = 'https://shoppinglive.kakao.com';
 const PAGE_SIZE = 50;
 const MAX_PAGES_PER_DAY = 10; // 하루 안에서 커서 페이지네이션 상한 (무한루프 방지)
-const RANGE_DAYS = 6; // 오늘 ~ +6일
+const RANGE_DAYS = 21; // 오늘 ~ +21일 (실측 결과 이 지점부터 방송이 거의 0건으로 수렴함)
 const CACHE_KEY = 'crawl-kakao:raw';
 const CACHE_TTL = 300; // 5분
 
@@ -20,10 +20,11 @@ function kakaoHeaders() {
   };
 }
 
-function ymd(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+// Vercel 서버는 UTC로 동작하므로 KST(UTC+9) 날짜를 명시적으로 계산한다
+function ymd(kstDate) {
+  const y = kstDate.getUTCFullYear();
+  const m = String(kstDate.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(kstDate.getUTCDate()).padStart(2, '0');
   return `${y}${m}${d}`;
 }
 
@@ -61,8 +62,12 @@ async function fetchDaySchedule(dayStr) {
     });
     if (cursor) params.set('cursor', cursor);
 
-    const r = await fetch(GATEWAY + '/api/v2/live-calendar?' + params, { headers: kakaoHeaders() });
-    if (!r.ok) break;
+    let r = await fetch(GATEWAY + '/api/v2/live-calendar?' + params, { headers: kakaoHeaders() });
+    if (!r.ok) {
+      await new Promise(resolve => setTimeout(resolve, 400));
+      r = await fetch(GATEWAY + '/api/v2/live-calendar?' + params, { headers: kakaoHeaders() });
+      if (!r.ok) break;
+    }
     const data = await r.json();
     const contents = data.contents || [];
     contents.forEach(item => {
@@ -77,14 +82,17 @@ async function fetchDaySchedule(dayStr) {
 
 async function fetchRawSchedule() {
   const days = [];
-  const now = new Date();
+  const now = new Date(Date.now() + 9 * 60 * 60 * 1000); // KST로 shift된 시각
   for (let i = 0; i <= RANGE_DAYS; i++) {
     const d = new Date(now);
-    d.setDate(now.getDate() + i);
+    d.setUTCDate(now.getUTCDate() + i);
     days.push(ymd(d));
   }
 
-  const results = await Promise.all(days.map(fetchDaySchedule));
+  // 요청을 동시에 터뜨리면 게이트웨이가 일부를 레이트리밋하는 경향이 있어 살짝 간격을 두고 시작한다
+  const results = await Promise.all(days.map((day, idx) =>
+    new Promise(resolve => setTimeout(resolve, idx * 150)).then(() => fetchDaySchedule(day))
+  ));
   const seen = new Set();
   const items = [];
   results.flat().forEach(card => {

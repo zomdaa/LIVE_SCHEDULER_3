@@ -6,7 +6,7 @@ import { kv } from '@vercel/kv';
 // (broadcastCount가 0인 날짜를 조회하면 서버가 조용히 "오늘" 데이터로 폴백하므로 반드시 스킵해야 함)
 const BASE = 'https://apis.11st.co.kr/pui/v2/page';
 const PAGE_ID = 'LIVE11TIMETBLPAGE';
-const RANGE_DAYS = 6; // 오늘 ~ +6일
+// 날짜 범위는 하드코딩하지 않고 편성표 탭이 실제로 제공하는 폭(-7일~+14일)을 그대로 따른다
 const CACHE_KEY = 'crawl-11st:raw';
 const CACHE_TTL = 300; // 5분
 
@@ -94,8 +94,12 @@ async function fetchTodayAndTabs() {
 }
 
 async function fetchDaySchedule(carrSn, dateObj) {
-  const r = await fetch(`${BASE}?pageId=${PAGE_ID}&carrSn=${carrSn}&selectDate=${ymd(dateObj)}`, { headers: headers11st() });
-  if (!r.ok) return [];
+  let r = await fetch(`${BASE}?pageId=${PAGE_ID}&carrSn=${carrSn}&selectDate=${ymd(dateObj)}`, { headers: headers11st() });
+  if (!r.ok) {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    r = await fetch(`${BASE}?pageId=${PAGE_ID}&carrSn=${carrSn}&selectDate=${ymd(dateObj)}`, { headers: headers11st() });
+    if (!r.ok) return [];
+  }
   const json = await r.json();
   const products = [];
   collectBlockLists(json.data, 'ProductList_Live11', products);
@@ -106,13 +110,6 @@ async function fetchRawSchedule() {
   const { tabs, products, carrSn } = await fetchTodayAndTabs();
 
   const now = nowKST();
-  const days = [];
-  for (let i = 0; i <= RANGE_DAYS; i++) {
-    const d = new Date(now);
-    d.setUTCDate(now.getUTCDate() + i);
-    days.push(d);
-  }
-
   const items = [];
   const seen = new Set();
   const addAll = (list, dateObj) => {
@@ -125,17 +122,28 @@ async function fetchRawSchedule() {
     });
   };
 
-  // 오늘(day[0])은 이미 받아온 데이터를 재사용
-  addAll(products, days[0]);
+  // 오늘은 이미 받아온 데이터를 재사용
+  addAll(products, now);
 
-  const tabByDate = new Map(tabs.map(t => [t.date, t]));
-  const futureDays = days.slice(1).filter(d => {
-    const tab = tabByDate.get(mToD(d));
-    return tab && tab.broadcastCount > 0;
-  });
+  // 탭 목록(-7일~+14일 고정 폭)에서 오늘 이후이고 방송이 있는 날짜만 골라 개별 조회.
+  // 배열 위치(= 오늘로부터의 실제 날짜 오프셋)를 필터링 전에 매겨둬야 날짜가 밀리지 않는다
+  const todayLabel = mToD(now);
+  const todayIdx = tabs.findIndex(t => t.date === todayLabel);
+  const futureDays = [];
+  if (todayIdx !== -1) {
+    for (let i = todayIdx + 1; i < tabs.length; i++) {
+      if (tabs[i].broadcastCount > 0) {
+        const d = new Date(now);
+        d.setUTCDate(now.getUTCDate() + (i - todayIdx));
+        futureDays.push(d);
+      }
+    }
+  }
 
   if (carrSn && futureDays.length > 0) {
-    const results = await Promise.all(futureDays.map(d => fetchDaySchedule(carrSn, d)));
+    const results = await Promise.all(futureDays.map((d, idx) =>
+      new Promise(resolve => setTimeout(resolve, idx * 150)).then(() => fetchDaySchedule(carrSn, d))
+    ));
     results.forEach((list, idx) => addAll(list, futureDays[idx]));
   }
 
