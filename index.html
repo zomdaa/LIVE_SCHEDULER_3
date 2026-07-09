@@ -1114,7 +1114,7 @@ async function doSearch() {
   setStatus(`최저가 혜택을 위해 열심히 찾는 중..!`, true);
 
   try {
-    const CRAWL_PLATFORMS = ['naver', 'kakao', 'ssg', '11st', 'oliveyoung', 'gmarket'];
+    const CRAWL_PLATFORMS = ['naver', 'kakao', 'ssg', '11st', 'oliveyoung', 'gmarket', 'cjonstyle', 'musinsa'];
     const [crawlResults, searchRes] = await Promise.all([
       Promise.all(CRAWL_PLATFORMS.map(p =>
         fetch(`/api/crawl?platform=${p}&keyword=${encodeURIComponent(keyword)}`)

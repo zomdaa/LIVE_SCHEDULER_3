@@ -544,6 +544,151 @@ async function fetchGmarketRaw() {
 }
 
 // ---------------------------------------------------------------------------
+// CJ온스타일
+// (display.cjonstyle.com 의 "라이브 편성표" 페이지가 쓰는 구식 Backbone.js 기반
+// REST API. 인증/WAF 없이 바로 호출 가능. bdStrDtm/bdEndDtm 은 epoch ms라서
+// 그대로 Date에 넣으면 되고, 응답 자체에는 진행상태 필드가 없어 지금 시각과
+// 비교해서 직접 계산한다. 오늘 기준 +13일 정도까지만 실제 데이터가 있음)
+const CJ_BASE = 'https://display.cjonstyle.com';
+const CJ_RANGE_DAYS = 13;
+
+function cjHeaders() {
+  return {
+    'Accept': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Referer': 'https://display.cjonstyle.com/p/tv/tvSchedule?broadType=live',
+  };
+}
+
+function cjStatus(startMs, endMs) {
+  const now = Date.now();
+  if (endMs && now > endMs) return 'END';
+  if (startMs && now >= startMs) return 'ONAIR';
+  return 'BEFORE';
+}
+
+function cjToCard(item) {
+  return {
+    id: item.pgmCd,
+    title: item.pgmNm || '',
+    platform: 'CJ온스타일',
+    channel: item.itemList?.[0]?.brandName || '',
+    start: utcToKstNaive(item.bdStrDtm),
+    end: utcToKstNaive(item.bdEndDtm),
+    status: cjStatus(item.bdStrDtm, item.bdEndDtm),
+    url: CJ_BASE + '/p/tv/tvSchedule?broadType=live',
+  };
+}
+
+async function cjFetchDay(dayStr) {
+  const params = new URLSearchParams({ bdDt: dayStr, isMobile: 'false', broadType: 'live', isEmployee: 'false' });
+  let r = await fetch(`${CJ_BASE}/c/rest/tv/tvSchedule?${params}`, { headers: cjHeaders() });
+  if (!r.ok) {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    r = await fetch(`${CJ_BASE}/c/rest/tv/tvSchedule?${params}`, { headers: cjHeaders() });
+    if (!r.ok) return [];
+  }
+  const json = await r.json();
+  const list = json?.result?.programList;
+  return Array.isArray(list) ? list.map(cjToCard) : [];
+}
+
+async function fetchCjRaw() {
+  const days = [];
+  const now = new Date(Date.now() + 9 * 60 * 60 * 1000); // KST로 shift된 시각
+  for (let i = 0; i <= CJ_RANGE_DAYS; i++) {
+    const d = new Date(now);
+    d.setUTCDate(now.getUTCDate() + i);
+    days.push(kstYmd(d));
+  }
+
+  const results = await Promise.all(days.map((day, idx) =>
+    new Promise(resolve => setTimeout(resolve, idx * 150)).then(() => cjFetchDay(day))
+  ));
+  const seen = new Set();
+  const items = [];
+  results.flat().forEach(card => {
+    if (card.id && !seen.has(card.id)) {
+      seen.add(card.id);
+      items.push(card);
+    }
+  });
+  return items;
+}
+
+// ---------------------------------------------------------------------------
+// 무신사 라이브
+// (www.musinsa.com/campaign/musinsa_live/0 페이지가 쓰는 API. 페이지 자체엔
+// __NEXT_DATA__가 있지만 실제 편성 데이터는 하이드레이션 후 별도 fetch로
+// 채워진다 - performance.getEntriesByType('resource')로 실제 브라우저 요청을
+// 확인해서 찾음. "라이브 편성표" 모듈(LIVECOMMERCE 타입)의 chartList가 곧
+// 스케줄 목록이고, 날짜별 브랜드 탭들은 각 방송의 상품 목록이라 스케줄
+// 자체에는 필요 없음. 인증 불필요.
+const MUSINSA_API = 'https://api.musinsa.com/api2/campaign/cpcms/v2/musinsa_live/link-tabs/0/modules';
+
+function musinsaHeaders() {
+  return {
+    'Accept': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Referer': 'https://www.musinsa.com/campaign/musinsa_live/0',
+  };
+}
+
+function musinsaParseTime(text) {
+  const m = String(text || '').match(/(오전|오후)\s*(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  let h = parseInt(m[2], 10);
+  if (m[1] === '오후' && h !== 12) h += 12;
+  if (m[1] === '오전' && h === 12) h = 0;
+  return { h: String(h).padStart(2, '0'), m: m[3] };
+}
+
+function musinsaToCard(item, nowKst) {
+  const time = musinsaParseTime(item.onAirTimeText) || { h: '00', m: '00' };
+  const itemMonth = Number(item.onAirDateTextM);
+  const itemDay = Number(item.onAirDateTextD);
+  let year = nowKst.getUTCFullYear();
+  // 연말/연초 경계에서 항목의 월이 현재보다 한참 이전이면 다음 해로 넘어간 것
+  if (itemMonth && itemMonth < nowKst.getUTCMonth() + 1 - 6) year += 1;
+  const month = String(itemMonth).padStart(2, '0');
+  const day = String(itemDay).padStart(2, '0');
+  const url = item.link ? (item.link.startsWith('http') ? item.link : 'https://www.musinsa.com' + item.link) : '';
+  return {
+    id: item.idx,
+    title: (item.title || '').replace(/ㅣ/g, ' - '),
+    platform: '무신사 라이브',
+    channel: '',
+    start: `${year}-${month}-${day}T${time.h}:${time.m}:00`,
+    end: null,
+    status: item.todayYn === 'Y' ? 'ONAIR' : 'BEFORE',
+    url,
+  };
+}
+
+async function fetchMusinsaRaw() {
+  const r = await fetch(MUSINSA_API, { headers: musinsaHeaders() });
+  if (!r.ok) return [];
+  const json = await r.json();
+  const modules = json?.data;
+  if (!Array.isArray(modules)) return [];
+  const liveModule = modules.find(m => m.moduleType === 'LIVECOMMERCE');
+  const chartList = liveModule?.content?.chartList;
+  if (!Array.isArray(chartList)) return [];
+
+  const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const seen = new Set();
+  const items = [];
+  chartList.forEach(item => {
+    const card = musinsaToCard(item, nowKst);
+    if (card.id && !seen.has(card.id)) {
+      seen.add(card.id);
+      items.push(card);
+    }
+  });
+  return items;
+}
+
+// ---------------------------------------------------------------------------
 
 const PLATFORMS = {
   naver: { cacheKey: 'crawl-naver:raw', label: '네이버쇼핑라이브', fetchRaw: fetchNaverRaw },
@@ -552,6 +697,8 @@ const PLATFORMS = {
   '11st': { cacheKey: 'crawl-11st:raw', label: '11번가 라이브11', fetchRaw: fetch11stRaw },
   oliveyoung: { cacheKey: 'crawl-oliveyoung:raw', label: '올리브영 라이브', fetchRaw: fetchOliveyoungRaw },
   gmarket: { cacheKey: 'crawl-gmarket:raw', label: 'G마켓 라이브', fetchRaw: fetchGmarketRaw },
+  cjonstyle: { cacheKey: 'crawl-cjonstyle:raw', label: 'CJ온스타일', fetchRaw: fetchCjRaw },
+  musinsa: { cacheKey: 'crawl-musinsa:raw', label: '무신사 라이브', fetchRaw: fetchMusinsaRaw },
 };
 
 export default async function handler(req, res) {
