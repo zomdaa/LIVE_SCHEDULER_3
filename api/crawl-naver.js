@@ -2,10 +2,16 @@ import { kv } from '@vercel/kv';
 
 // 네이버 쇼핑라이브 내부 API (shoppinglive.naver.com /calendar 페이지가 사용하는 API)
 // GATEWAY_URL: apis.naver.com/selectiveweb/live_commerce_web, 라우팅 키 헤더 필요
+//
+// timeline/current 에서 timeline/next 로 "지금"부터 이어서 커서 페이지네이션하면
+// 당일 스케줄이 끝나는 시점(cursor=null)에서 멈춰버려 다음날 이후 데이터를 못 가져온다.
+// 하지만 timestamp 파라미터에 미래 시각을 직접 넣어 호출하면 그 날짜의 스케줄이 정상
+// 반환되는 것을 확인했다 (예: KST 자정으로 호출 -> 그날 하루 전체를 next 페이지네이션으로 순회 가능).
+// 그래서 오늘~+6일 각 날짜의 KST 자정을 anchor timestamp 로 개별 조회한다.
 const GATEWAY = 'https://apis.naver.com/selectiveweb/live_commerce_web';
 const ROUTING_KEY = 'real-home-api';
 const PAGE_SIZE = 30; // 서버측 상한 (그 이상이면 400 에러)
-const MAX_PAGES = 15; // 무한루프 방지용 안전장치
+const MAX_PAGES_PER_DAY = 10; // 하루 안에서 커서 페이지네이션 상한 (무한루프 방지)
 const RANGE_DAYS = 6; // 오늘 ~ +6일 (라방바 스케줄 API와 동일한 범위)
 const CACHE_KEY = 'crawl-naver:raw';
 const CACHE_TTL = 300; // 5분
@@ -37,11 +43,17 @@ function toCard(entry) {
   };
 }
 
-async function fetchRawSchedule() {
+// Vercel 서버는 UTC로 동작하므로 KST(UTC+9) 자정의 실제 Unix timestamp(ms)를 명시적으로 계산한다
+function kstMidnightTimestamp(dayOffset) {
+  const shifted = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  shifted.setUTCDate(shifted.getUTCDate() + dayOffset);
+  shifted.setUTCHours(0, 0, 0, 0);
+  return shifted.getTime() - 9 * 60 * 60 * 1000;
+}
+
+async function fetchDaySchedule(anchorTimestamp, includeCurrent) {
   const items = [];
   const seen = new Set();
-  const cutoff = Date.now() + RANGE_DAYS * 24 * 60 * 60 * 1000;
-
   const addCard = (entry) => {
     const card = toCard(entry);
     if (card && card.id && !seen.has(card.id)) {
@@ -51,18 +63,18 @@ async function fetchRawSchedule() {
   };
 
   const r = await fetch(GATEWAY + '/v1/calendar/broadcast/timeline/current?' + new URLSearchParams({
-    timestamp: String(Date.now()),
+    timestamp: String(anchorTimestamp),
     size: String(PAGE_SIZE),
   }), { headers: naverHeaders() });
-  if (!r.ok) throw new Error('naver calendar api failed: ' + r.status);
+  if (!r.ok) return items;
   const data = await r.json();
 
-  if (data.currentBroadcast) addCard(data.currentBroadcast);
+  if (includeCurrent && data.currentBroadcast) addCard(data.currentBroadcast);
   (data.nextBroadcasts?.list || []).forEach(addCard);
 
   let cursor = data.nextBroadcasts?.next || null;
   let page = 0;
-  while (cursor && page < MAX_PAGES) {
+  while (cursor && page < MAX_PAGES_PER_DAY) {
     page++;
     const nr = await fetch(GATEWAY + '/v1/calendar/broadcast/timeline/next?' + new URLSearchParams({
       next: cursor,
@@ -73,16 +85,29 @@ async function fetchRawSchedule() {
     const list = nd.list || [];
     list.forEach(addCard);
     cursor = nd.next || null;
-
-    const lastStart = list[list.length - 1]?.broadcast?.expectedStartDate;
-    if (lastStart && new Date(lastStart).getTime() > cutoff) break;
     if (list.length === 0) break;
   }
 
-  return items.filter(item => {
-    if (!item.start) return true;
-    return new Date(item.start).getTime() <= cutoff;
+  return items;
+}
+
+async function fetchRawSchedule() {
+  const anchors = [];
+  for (let i = 0; i <= RANGE_DAYS; i++) {
+    anchors.push(i === 0 ? Date.now() : kstMidnightTimestamp(i));
+  }
+
+  const results = await Promise.all(anchors.map((ts, idx) => fetchDaySchedule(ts, idx === 0)));
+
+  const seen = new Set();
+  const items = [];
+  results.flat().forEach(card => {
+    if (card.id && !seen.has(card.id)) {
+      seen.add(card.id);
+      items.push(card);
+    }
   });
+  return items;
 }
 
 export default async function handler(req, res) {
