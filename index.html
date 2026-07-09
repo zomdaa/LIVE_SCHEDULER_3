@@ -924,7 +924,13 @@ function fmtDate(d) {
 
 function daysFromNow(d) {
   if (!d) return null;
-  return Math.round((d - new Date()) / (1000 * 60 * 60 * 24));
+  // 시:분까지 포함해서 반올림하면 "오늘 밤 11시"와 "내일 새벽 1시"처럼 실제로는
+  // 하루 차이인데 몇 시간 안 남았다는 이유로 같은 날로 계산되는 문제가 있어서,
+  // 달력상의 날짜(자정 기준)만 비교한다
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTarget = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return Math.round((startOfTarget - startOfToday) / (1000 * 60 * 60 * 24));
 }
 
 function escapeAttr(str) {
@@ -1141,7 +1147,13 @@ async function doSearch() {
       }
     });
 
-    const upcoming = stillUpcoming;
+    const upcoming = stillUpcoming.sort((a, b) => {
+      const da = parseLabangDate(a.start);
+      const db = parseLabangDate(b.start);
+      if (!da) return 1;
+      if (!db) return -1;
+      return da - db;
+    });
     const past = [...endedFromUpcoming, ...rawPast]
       .sort((a, b) => String(b.start).localeCompare(String(a.start)));
 
