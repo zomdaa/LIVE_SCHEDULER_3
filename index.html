@@ -623,6 +623,12 @@ footer {
   margin-top: auto;
   text-shadow: 0 1px 3px rgba(255,255,255,0.5);
 }
+.data-credit {
+  text-align: center;
+  font-size: 11px;
+  color: #8a8477;
+  margin-top: 6px;
+}
 </style>
 </head>
 <body>
@@ -691,7 +697,6 @@ footer {
   </div>
 </main>
 
-<footer>데이터 출처: 라방바 데이터랩</footer>
 
 <script>
 document.addEventListener('contextmenu', e => e.preventDefault());
@@ -914,9 +919,8 @@ function parseSearchDate(str) {
 
 function fmtDate(d) {
   if (!d) return { month: '?', day: '?', time: '' };
-  const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   return {
-    month: months[d.getMonth()],
+    month: d.getMonth() + 1,
     day: d.getDate(),
     time: `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`,
   };
@@ -993,7 +997,7 @@ function upcomingCard(item) {
     <a class="card ${urgency}" href="${item.url || '#'}" target="_blank" rel="noopener">
       <div class="date-col">
         <div class="date-month">${dDayLabel}</div>
-        <div class="date-day">${dt.month} ${dt.day}</div>
+        <div class="date-day">${dt.month}/${dt.day}</div>
         <div class="date-time">${dt.time}</div>
       </div>
       <div class="vline"></div>
@@ -1022,7 +1026,7 @@ function pastCard(item) {
     <a class="card past" href="${item.url}" target="_blank" rel="noopener">
       <div class="date-col">
         <div class="date-month">${ago}일 전</div>
-        <div class="date-day">${dt.month} ${dt.day}</div>
+        <div class="date-day">${dt.month}/${dt.day}</div>
         <div class="date-time">${dt.time}</div>
       </div>
       <div class="vline"></div>
@@ -1200,6 +1204,7 @@ async function doSearch() {
             <div class="section-count">${past.length}건</div>
           </div>
           <div class="cards">${past.map(pastCard).join('')}</div>
+          <div class="data-credit">지난 방송 데이터 출처: 라방바 데이터랩</div>
         </div>`;
     }
 
