@@ -46,4 +46,6 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
       - name: Check whether gmarket's Cloudflare challenge can be passed
+        env:
+          INGEST_SECRET: ${{ secrets.INGEST_SECRET }}
         run: node diagnose-gmarket.js
