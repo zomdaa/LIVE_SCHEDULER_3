@@ -689,6 +689,102 @@ async function fetchMusinsaRaw() {
 }
 
 // ---------------------------------------------------------------------------
+// 방송 상세(판매 상품/혜택) 조회 - 캘린더 카드 클릭 시 뜨는 팝업용.
+// 네이버/카카오/11번가는 상세 API가 인증 없이 열려 있어 바로 호출 가능하고,
+// G마켓은 Cloudflare가 이 API도 막고 있어 조회 불가 (팝업에서는 기본 정보만 표시).
+
+async function fetchNaverDetail(id) {
+  const r = await fetch(`${NAVER_GATEWAY}/v1/broadcast/${id}`, { headers: naverHeaders() });
+  if (!r.ok) return null;
+  const d = await r.json();
+  const benefits = [];
+  if (d.description) benefits.push(d.description);
+  const products = (d.shoppingProducts || []).map(p => ({
+    name: p.name || p.productName || '',
+    image: p.image || '',
+    price: p.price ?? null,
+    discountRate: p.discountRate ?? null,
+    url: p.productEndUrl || p.productBridgeUrl || '',
+  }));
+  return {
+    title: d.title || '',
+    channel: d.nickname || '',
+    image: d.standByImage || d.previewImage || '',
+    url: d.broadcastEndUrl || `https://shoppinglive.naver.com/lives/${id}`,
+    benefits,
+    products,
+  };
+}
+
+async function fetchKakaoDetail(id) {
+  const r = await fetch(`${KAKAO_GATEWAY}/api/v2/live-pages/${id}`, { headers: kakaoHeaders() });
+  if (!r.ok) return null;
+  const d = await r.json();
+  const benefits = [];
+  if (d.mainBenefit) benefits.push(d.mainBenefit);
+  (d.liveBaseBenefits || []).forEach(b => {
+    if (!b || !b.title) return;
+    benefits.push(b.contents ? `${b.title}: ${b.contents}` : b.title);
+  });
+
+  let products = [];
+  const moduleId = d.liveProductDisplayModules?.[0]?.id;
+  if (moduleId) {
+    const pr = await fetch(`${KAKAO_GATEWAY}/api/v1/products/module/${moduleId}?page=0&size=20`, { headers: kakaoHeaders() });
+    if (pr.ok) {
+      const pd = await pr.json();
+      products = (pd.contents || []).map(p => ({
+        name: p.name || '',
+        image: p.imageUrl || '',
+        price: p.discountedPrice ?? p.originalPrice ?? null,
+        discountRate: p.discountedPercentage ?? null,
+        url: p.productUrl || '',
+      }));
+    }
+  }
+
+  return {
+    title: (d.title || '').replace(/\n/g, ' '),
+    channel: d.liveDisplaySaleChannel?.name || '',
+    image: d.imageUrl || '',
+    url: `https://shoppinglive.kakao.com/live/${id}`,
+    benefits,
+    products,
+  };
+}
+
+const ST11_LIVE_SVC = 'https://live11-svc.11st.co.kr';
+
+async function fetch11stDetail(id) {
+  const r = await fetch(`${ST11_LIVE_SVC}/v1/broadcasts/${id}/detail`, { headers: headers11st() });
+  if (!r.ok) return null;
+  const d = await r.json();
+  const benefits = [];
+  if (d.description) benefits.push(d.description);
+  const products = (d.products || []).map(p => ({
+    name: p.name || '',
+    image: p.thumbnail || '',
+    price: p.discountedPrice ? Number(String(p.discountedPrice).replace(/,/g, '')) : (p.price ? Number(String(p.price).replace(/,/g, '')) : null),
+    discountRate: p.discountRate ? Number(p.discountRate) : null,
+    url: p.no ? `https://m.11st.co.kr/products/${p.no}` : '',
+  }));
+  return {
+    title: d.title || '',
+    channel: d.channelInfo?.title || '',
+    image: d.verticalImage || '',
+    url: d.linkUrl || d.vodLinkUrl || '',
+    benefits,
+    products,
+  };
+}
+
+const DETAIL_FETCHERS = {
+  naver: fetchNaverDetail,
+  kakao: fetchKakaoDetail,
+  '11st': fetch11stDetail,
+};
+
+// ---------------------------------------------------------------------------
 
 const PLATFORMS = {
   naver: { cacheKey: 'crawl-naver:raw', label: '네이버쇼핑라이브', fetchRaw: fetchNaverRaw },
@@ -706,7 +802,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { platform, keyword } = req.query;
+  const { platform, keyword, action, id } = req.query;
   const config = PLATFORMS[platform];
   if (!config) {
     return res.status(400).json({ error: 'platform must be one of: ' + Object.keys(PLATFORMS).join(', ') });
@@ -722,6 +818,28 @@ export default async function handler(req, res) {
       return res.status(429).json({ error: '요청이 너무 많아요. 잠시 후 다시 시도해주세요.' });
     }
   } catch (e) {}
+
+  if (action === 'detail') {
+    if (!id) return res.status(400).json({ error: 'id is required' });
+    const fetchDetail = DETAIL_FETCHERS[platform];
+    if (!fetchDetail) {
+      return res.status(200).json({ detail: null });
+    }
+    const detailCacheKey = `crawl-detail:${platform}:${id}`;
+    try {
+      const cached = await kv.get(detailCacheKey);
+      if (cached) return res.status(200).json({ detail: cached });
+    } catch (e) {}
+    try {
+      const detail = await fetchDetail(String(id));
+      if (detail) {
+        try { await kv.set(detailCacheKey, detail, { ex: CACHE_TTL }); } catch (e) {}
+      }
+      return res.status(200).json({ detail });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
 
   let rawItems = null;
   try {

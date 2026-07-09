@@ -629,6 +629,202 @@ footer {
   color: #8a8477;
   margin-top: 6px;
 }
+
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(20,18,14,0.55);
+  backdrop-filter: blur(2px);
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+.modal-overlay.show { display: flex; }
+@media (min-width: 640px) {
+  .modal-overlay { align-items: center; padding: 20px; }
+}
+
+.modal-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--canvas);
+  border: 1.5px solid #1a1814;
+  box-shadow: 4px 4px 0 #1a1814;
+  border-radius: 20px 20px 0 0;
+  padding: 22px 20px 24px;
+  animation: modalUp 0.18s ease-out;
+}
+@media (min-width: 640px) {
+  .modal-sheet { border-radius: 20px; }
+}
+@keyframes modalUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px solid #1a1814;
+  background: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--ink);
+}
+.modal-close:active { transform: scale(0.92); }
+
+.modal-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  padding: 40px 0;
+  font-size: 13px;
+  color: var(--mute);
+  font-weight: 600;
+}
+
+.modal-platform {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: var(--bone);
+  color: var(--charcoal);
+  margin-bottom: 8px;
+}
+.modal-title {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.4;
+  margin-bottom: 4px;
+  padding-right: 28px;
+}
+.modal-meta {
+  font-size: 13px;
+  color: var(--mute);
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+.modal-image {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  background: var(--bone);
+}
+.modal-image img { width: 100%; display: block; object-fit: cover; max-height: 220px; }
+
+.modal-section-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--charcoal);
+  margin: 16px 0 8px;
+  letter-spacing: 0.02em;
+}
+.modal-benefits {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.modal-benefits li {
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  font-weight: 600;
+  color: var(--body);
+}
+.modal-benefits li::before { content: '🎁 '; }
+
+.modal-products {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.modal-product {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+}
+.modal-product img {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bone);
+}
+.modal-product-info { flex: 1; min-width: 0; }
+.modal-product-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.modal-product-price { font-size: 13px; font-weight: 800; margin-top: 3px; }
+.modal-product-discount { color: var(--primary); font-weight: 800; margin-right: 4px; }
+.modal-product-original { color: var(--ash); font-weight: 600; text-decoration: line-through; font-size: 11px; }
+
+.modal-empty {
+  font-size: 13px;
+  color: var(--ash);
+  font-weight: 600;
+  padding: 10px 2px 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+.modal-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 13px;
+  border-radius: 12px;
+  border: 1.5px solid #1a1814;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 2px 2px 0 #1a1814;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.modal-btn:hover { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 #1a1814; }
+.modal-btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 #1a1814; }
+.modal-btn-watch { background: var(--primary); color: #fff; }
+.modal-btn-notify { background: #fff; color: var(--ink); }
+.modal-btn-notify.on { background: #ffe8a3; }
+.modal-btn:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: 2px 2px 0 #1a1814; }
 </style>
 </head>
 <body>
@@ -697,6 +893,12 @@ footer {
   </div>
 </main>
 
+<div class="modal-overlay" id="detailModalOverlay" onclick="if (event.target === this) closeDetailModal()">
+  <div class="modal-sheet" id="detailModalSheet">
+    <button class="modal-close" onclick="closeDetailModal()" aria-label="닫기">&times;</button>
+    <div id="detailModalBody"><div class="modal-loading"><div class="spinner"></div>불러오는 중..</div></div>
+  </div>
+</div>
 
 <script>
 document.addEventListener('contextmenu', e => e.preventDefault());
@@ -892,6 +1094,212 @@ async function loadLikeCounts() {
   } catch (e) {}
 }
 
+// ---------------------------------------------------------------------------
+// 방송 상세 팝업 (판매 상품 / 혜택 / 방송 보러가기 / 알림받기)
+
+function handleCardClick(event, idx) {
+  event.preventDefault();
+  const item = (window.__upcomingItems || [])[idx];
+  if (item) openDetailModal(item);
+  return false;
+}
+
+function fmtWon(n) {
+  if (n === null || n === undefined || isNaN(n)) return null;
+  return Number(n).toLocaleString('ko-KR') + '원';
+}
+
+function renderProduct(p) {
+  const hasDiscount = p.discountRate && p.discountRate > 0 && p.price;
+  let priceHtml = '';
+  if (p.price) {
+    if (hasDiscount) {
+      const original = Math.round(p.price / (1 - p.discountRate / 100));
+      priceHtml = `<span class="modal-product-discount">${p.discountRate}%</span>${fmtWon(p.price)} <span class="modal-product-original">${fmtWon(original)}</span>`;
+    } else {
+      priceHtml = fmtWon(p.price);
+    }
+  }
+  return `
+    <a class="modal-product" href="${escapeAttr(p.url || '#')}" target="_blank" rel="noopener">
+      ${p.image ? `<img src="${escapeAttr(p.image)}" alt="" loading="lazy" />` : ''}
+      <div class="modal-product-info">
+        <div class="modal-product-name">${escapeAttr(p.name || '')}</div>
+        ${priceHtml ? `<div class="modal-product-price">${priceHtml}</div>` : ''}
+      </div>
+    </a>`;
+}
+
+function renderModalBase(item) {
+  const start = parseLabangDate(item.start);
+  const dt = start ? fmtDate(start) : null;
+  const metaText = dt ? `${dt.month}/${dt.day} ${dt.time}` : '';
+  const reminderId = item.id ? String(item.id) : '';
+  const canRemind = !!(reminderId && start && start > new Date());
+  const isReminded = canRemind && getReminders().some(r => r.id === reminderId);
+
+  return `
+    <span class="modal-platform">${escapeAttr(item.platform || '')}</span>
+    <div class="modal-title">${escapeAttr(item.title || '')}</div>
+    <div class="modal-meta">${escapeAttr(item.channel || '')}${item.channel && metaText ? ' · ' : ''}${metaText}</div>
+    <div id="modalDynamic"><div class="modal-loading"><div class="spinner"></div>혜택 정보를 불러오는 중..</div></div>
+    <div class="modal-actions">
+      <a class="modal-btn modal-btn-watch" href="${escapeAttr(item.url || '#')}" target="_blank" rel="noopener">📺 방송 보러가기</a>
+      ${canRemind ? `<button class="modal-btn modal-btn-notify${isReminded ? ' on' : ''}" id="modalNotifyBtn" onclick="toggleReminder(event, '${reminderId}')">${isReminded ? '🔔 알림 설정됨' : '🔕 알림받기'}</button>` : ''}
+    </div>`;
+}
+
+async function openDetailModal(item) {
+  const overlay = document.getElementById('detailModalOverlay');
+  const body = document.getElementById('detailModalBody');
+  body.innerHTML = renderModalBase(item);
+  overlay.classList.add('show');
+  document.body.style.overflow = 'hidden';
+
+  const platformKey = item.platformKey;
+  const id = item.id;
+  const dynamic = document.getElementById('modalDynamic');
+  if (!platformKey || !id) {
+    if (dynamic) dynamic.innerHTML = '';
+    return;
+  }
+
+  try {
+    const r = await fetch(`/api/crawl?platform=${encodeURIComponent(platformKey)}&action=detail&id=${encodeURIComponent(id)}`);
+    const data = await r.json();
+    const detail = data.detail;
+    // 팝업이 이미 닫혔거나 다른 방송으로 바뀌었으면 무시
+    if (!document.getElementById('detailModalOverlay').classList.contains('show')) return;
+    const dynamicNow = document.getElementById('modalDynamic');
+    if (!dynamicNow) return;
+
+    if (!detail) {
+      dynamicNow.innerHTML = `<div class="modal-empty">이 플랫폼은 상세 혜택 정보를 불러올 수 없어요. 방송 페이지에서 직접 확인해주세요!</div>`;
+      return;
+    }
+
+    let html = '';
+    if (detail.image) {
+      html += `<div class="modal-image"><img src="${escapeAttr(detail.image)}" alt="" loading="lazy" /></div>`;
+    }
+    if (detail.benefits && detail.benefits.length) {
+      html += `<div class="modal-section-title">🎁 혜택</div><ul class="modal-benefits">${detail.benefits.map(b => `<li>${escapeAttr(b)}</li>`).join('')}</ul>`;
+    }
+    if (detail.products && detail.products.length) {
+      html += `<div class="modal-section-title">🛍️ 판매 상품 (${detail.products.length})</div><div class="modal-products">${detail.products.map(renderProduct).join('')}</div>`;
+    }
+    if (!html) {
+      html = `<div class="modal-empty">공개된 상세 혜택 정보가 없어요.</div>`;
+    }
+    dynamicNow.innerHTML = html;
+  } catch (e) {
+    const dynamicNow = document.getElementById('modalDynamic');
+    if (dynamicNow) dynamicNow.innerHTML = `<div class="modal-empty">혜택 정보를 불러오지 못했어요.</div>`;
+  }
+}
+
+function closeDetailModal() {
+  document.getElementById('detailModalOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeDetailModal();
+});
+
+// ---------------------------------------------------------------------------
+// 알림받기 - 실제 푸시가 아니라 이 탭이 열려있는 동안 브라우저 알림으로 알려주는
+// 가벼운 리마인더. 앱/탭을 꺼두면 울리지 않는다는 한계가 있음.
+const REMINDER_KEY = 'bnol_reminders';
+
+function getReminders() {
+  try { return JSON.parse(localStorage.getItem(REMINDER_KEY) || '[]'); } catch (e) { return []; }
+}
+function saveReminders(list) {
+  try { localStorage.setItem(REMINDER_KEY, JSON.stringify(list)); } catch (e) {}
+}
+
+async function toggleReminder(evt, id) {
+  const btn = evt.currentTarget;
+  const item = (window.__upcomingItems || []).find(i => String(i.id) === id);
+  if (!item) return;
+
+  let list = getReminders();
+  const exists = list.some(r => r.id === id);
+
+  if (exists) {
+    list = list.filter(r => r.id !== id);
+    saveReminders(list);
+    btn.textContent = '🔕 알림받기';
+    btn.classList.remove('on');
+    return;
+  }
+
+  if (!('Notification' in window)) {
+    alert('이 브라우저는 알림 기능을 지원하지 않아요.');
+    return;
+  }
+  let permission = Notification.permission;
+  if (permission === 'default') {
+    permission = await Notification.requestPermission();
+  }
+  if (permission !== 'granted') {
+    alert('알림 권한이 거부되어 있어요. 브라우저 설정에서 이 사이트의 알림을 허용해주세요.');
+    return;
+  }
+
+  const start = parseLabangDate(item.start);
+  list.push({
+    id,
+    title: item.title,
+    platform: item.platform,
+    url: item.url,
+    startAt: start ? start.getTime() : null,
+    notified: false,
+  });
+  saveReminders(list);
+  btn.textContent = '🔔 알림 설정됨';
+  btn.classList.add('on');
+}
+
+function checkReminders() {
+  const list = getReminders();
+  if (!list.length) return;
+  const now = Date.now();
+  let changed = false;
+  const remaining = [];
+
+  list.forEach(r => {
+    if (!r.startAt) { remaining.push(r); return; }
+
+    // 시작 후 2시간 지난 항목은 정리
+    if (now > r.startAt + 2 * 60 * 60 * 1000) {
+      changed = true;
+      return;
+    }
+
+    if (now >= r.startAt && !r.notified) {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          const n = new Notification(`🔴 ${r.platform || '라이브'} 방송 시작!`, {
+            body: r.title || '',
+            tag: 'bnol-' + r.id,
+          });
+          n.onclick = () => { window.open(r.url, '_blank'); n.close(); };
+        } catch (e) {}
+      }
+      changed = true;
+      remaining.push({ ...r, notified: true });
+    } else {
+      remaining.push(r);
+    }
+  });
+
+  if (changed) saveReminders(remaining);
+}
+setInterval(checkReminders, 30000);
+checkReminders();
+
 function setStatus(msg, loading) {
   statusEl.innerHTML = loading
     ? `<div class="spinner"></div>${msg}`
@@ -963,7 +1371,7 @@ function urgencyClass(isLive, isEnded, days) {
   return 'urgency-4';
 }
 
-function upcomingCard(item) {
+function upcomingCard(item, idx) {
   const start = parseLabangDate(item.start);
   const end = parseLabangDate(item.end);
   const dt = fmtDate(start);
@@ -994,7 +1402,7 @@ function upcomingCard(item) {
       </button>` : '';
 
   return `
-    <a class="card ${urgency}" href="${item.url || '#'}" target="_blank" rel="noopener">
+    <a class="card ${urgency}" href="${item.url || '#'}" target="_blank" rel="noopener" onclick="return handleCardClick(event, ${idx})">
       <div class="date-col">
         <div class="date-month">${dDayLabel}</div>
         <div class="date-day">${dt.month}/${dt.day}</div>
@@ -1124,7 +1532,11 @@ async function doSearch() {
       fetch(`/api/search?keyword=${encodeURIComponent(keyword)}`),
     ]);
 
-    const schedData = { upcoming: crawlResults.flatMap(r => r.upcoming || []) };
+    const schedData = {
+      upcoming: crawlResults.flatMap((r, i) =>
+        (r.upcoming || []).map(item => ({ ...item, platformKey: CRAWL_PLATFORMS[i] }))
+      ),
+    };
     const searchData = await searchRes.json();
 
     if (!searchRes.ok) {
@@ -1183,6 +1595,8 @@ async function doSearch() {
 
     let html = '';
 
+    window.__upcomingItems = upcoming;
+
     if (upcoming.length) {
       html += `
         <div class="section">
@@ -1191,7 +1605,7 @@ async function doSearch() {
             <div class="section-title">예정 방송</div>
             <div class="section-count">${upcoming.length}건</div>
           </div>
-          <div class="cards">${upcoming.map(upcomingCard).join('')}</div>
+          <div class="cards">${upcoming.map((item, idx) => upcomingCard(item, idx)).join('')}</div>
         </div>`;
     }
 
