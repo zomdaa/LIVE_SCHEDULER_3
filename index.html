@@ -1193,7 +1193,7 @@ async function openDetailModal(item) {
       html += `<div class="modal-image"><img src="${escapeAttr(detail.image)}" alt="" loading="lazy" /></div>`;
     }
     if (detail.benefits && detail.benefits.length) {
-      html += `<div class="modal-section-title">🎁 혜택</div><ul class="modal-benefits">${detail.benefits.map(b => `<li>${escapeAttr(b)}</li>`).join('')}</ul>`;
+      html += `<div class="modal-section-title">🎁 혜택</div><ul class="modal-benefits">${detail.benefits.map(b => `<li>${escapeAttr(b).replace(/\n/g, '<br>')}</li>`).join('')}</ul>`;
     }
     if (detail.products && detail.products.length) {
       html += `<div class="modal-section-title">🛍️ 판매 상품 (${detail.products.length})</div><div class="modal-products">${detail.products.map(renderProduct).join('')}</div>`;

@@ -746,7 +746,10 @@ async function fetchNaverDetail(id) {
     const bannerUrl = typeof d.broadcastBanner === 'string'
       ? d.broadcastBanner
       : (d.broadcastBanner?.imageUrl || d.broadcastBanner?.url || null);
-    if (bannerUrl) benefits.push(...await ocrExtractText(bannerUrl));
+    if (bannerUrl) {
+      const lines = await ocrExtractText(bannerUrl);
+      if (lines.length) benefits.push(lines.join('\n'));
+    }
   }
 
   const products = (d.shoppingProducts || []).map(p => ({
@@ -779,7 +782,10 @@ async function fetchKakaoDetail(id) {
 
   if (benefits.length === 0) {
     const bannerUrl = d.eventLiveBanner?.imageBanner?.imageUrl || d.eventLiveBanner?.shortCutBanner?.imageUrl || null;
-    if (bannerUrl) benefits.push(...await ocrExtractText(bannerUrl));
+    if (bannerUrl) {
+      const lines = await ocrExtractText(bannerUrl);
+      if (lines.length) benefits.push(lines.join('\n'));
+    }
   }
 
   let products = [];
@@ -863,8 +869,8 @@ async function fetchMusinsaDetail(campaignId) {
   // 항상 같은 문구를 담고 있다 - OCR 결과 안에서 그 문구가 나온 이미지 자체를 통째로 버린다
   const ocrResults = await Promise.all(bannerUrls.map(url => ocrExtractText(url)));
   const benefits = ocrResults
-    .filter(lines => !lines.some(l => /접속\s*방법|라이브\s*화면\s*터치/.test(l)))
-    .flat();
+    .filter(lines => lines.length && !lines.some(l => /접속\s*방법|라이브\s*화면\s*터치/.test(l)))
+    .map(lines => lines.join('\n'));
 
   return {
     title: titleMatch ? titleMatch[1] : '',
