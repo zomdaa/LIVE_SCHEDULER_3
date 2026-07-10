@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     if (count === 1) {
       await kv.expire(rateKey, 60);
     }
-    if (count > 20) {
+    if (count > 80) {
       return res.status(429).json({ error: '요청이 너무 많아요. 잠시 후 다시 시도해주세요.' });
     }
   } catch (e) {}
