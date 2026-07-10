@@ -66,7 +66,7 @@ async function runAll() {
 
   if (ohouseResult.status === 'fulfilled') {
     const ok = await ingest('ohouse', ohouseResult.value, secret);
-    summary.ohouse = { count: ohouseResult.value.length, ingested: ok };
+    summary.ohouse = { count: ohouseResult.value.length, ingested: ok, debug: ohouseResult.value._debug };
   } else {
     summary.ohouse = { error: ohouseResult.reason?.message || String(ohouseResult.reason) };
   }
@@ -334,31 +334,43 @@ function ohouseParseStart(text, nowKst) {
 }
 
 async function collectOhouse() {
+  const debug = {};
+  const withDebug = (items) => { items._debug = debug; return items; };
+
   const ocrApiKey = await getOcrApiKey();
-  if (!ocrApiKey) return [];
+  debug.hasOcrKey = !!ocrApiKey;
+  if (!ocrApiKey) return withDebug([]);
 
   const res = await fetch(`https://store.ohou.se/api/exhibitions/${OHOUSE_EXHIBITION_ID}`);
-  if (!res.ok) return [];
+  debug.fetchStatus = res.status;
+  if (!res.ok) return withDebug([]);
   const data = await res.json();
   const detail = data.exhibition?.details?.[0];
-  if (!detail) return [];
+  debug.hasDetail = !!detail;
+  if (!detail) return withDebug([]);
   let units;
-  try { units = JSON.parse(detail.units); } catch (e) { return []; }
+  try { units = JSON.parse(detail.units); } catch (e) { debug.unitsParseError = e.message; return withDebug([]); }
 
   const sections = collectOhouseSections(units).slice(0, 60);
+  debug.sectionCount = sections.length;
   const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
   const now = Date.now();
   const pageUrl = `https://store.ohou.se/exhibitions/${OHOUSE_EXHIBITION_ID}`;
 
   // 순차로 하나씩 OCR 돌리면 1~2분씩 걸려서 팝업이 닫혀버리니 병렬로 처리한다
   const ocrResults = await Promise.all(sections.map((s) => ocrExtractText(s.image, ocrApiKey)));
+  debug.ocrEmptyCount = ocrResults.filter((l) => l.length === 0).length;
+  debug.ocrSample = ocrResults.slice(0, 3).map((l) => l.join(' | '));
 
   const items = [];
+  let parsedCount = 0;
+  let pastCount = 0;
   sections.forEach((s, i) => {
     const text = ocrResults[i].join(' ');
     const start = ohouseParseStart(text, nowKst);
     if (!start) return;
-    if (new Date(start).getTime() < now) return;
+    parsedCount++;
+    if (new Date(start).getTime() < now) { pastCount++; return; }
     items.push({
       id: `ohouse-${s.brand}-${start}`,
       title: `${s.brand} 라이브`,
@@ -370,5 +382,7 @@ async function collectOhouse() {
       url: pageUrl,
     });
   });
-  return items;
+  debug.parsedCount = parsedCount;
+  debug.pastCount = pastCount;
+  return withDebug(items);
 }
