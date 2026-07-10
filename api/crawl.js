@@ -847,8 +847,10 @@ async function fetchMusinsaDetail(campaignId) {
   const titleMatch = html.match(/id="fbOgTitle"[^>]*content="([^"]*)"/);
   const imageMatch = html.match(/id="fbOgImage"[^>]*content="([^"]*)"/);
 
-  // 페이지 하단에는 이 캠페인과 무관한 "라이브 접속 방법" 안내, 다른 브랜드 교차홍보
-  // 배너도 같은 클래스로 섞여 있어 - 섹션 제목으로 그런 것들을 걸러낸다
+  // 페이지 하단에는 이 캠페인과 무관한 "라이브 접속 방법" 안내 이미지가 모든
+  // 캠페인에 공통으로 재사용되는데, 제목도 주의사항도 없이 이미지 하나만 덜렁
+  // 들어있는 게 특징이다 - 제목(header) 또는 주의사항(notice)이 있는 섹션만
+  // 진짜 이 캠페인의 혜택 배너로 보고 나머지는 걸러낸다
   const bannerUrls = [];
   const sectionRe = /<section class="live-teasing__section">([\s\S]*?)<\/section>/g;
   let s;
@@ -856,6 +858,7 @@ async function fetchMusinsaDetail(campaignId) {
     const block = s[1];
     const title = block.match(/live-teasing__section__header__title">([^<]*)</)?.[1] || '';
     if (/접속|브랜드|Coming Soon/i.test(title)) continue;
+    if (!title && !/live-teasing__notice/.test(block)) continue;
     const img = block.match(/live-teasing__section__visual">\s*<img src="([^"]+)"/)?.[1];
     if (img) bannerUrls.push(img.startsWith('//') ? `https:${img}` : img);
   }
