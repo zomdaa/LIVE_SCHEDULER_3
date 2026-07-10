@@ -841,7 +841,7 @@ async function fetchMusinsaDetail(campaignId) {
   const r = await fetch(`https://www.musinsa.com/app/liveshop/campaign/${campaignId}`, {
     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
   });
-  if (!r.ok) return null;
+  if (!r.ok) throw new Error(`musinsa campaign page failed: ${r.status}`); // TEMP diagnostic, will revert
   const html = await r.text();
 
   const titleMatch = html.match(/id="fbOgTitle"[^>]*content="([^"]*)"/);
