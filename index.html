@@ -1157,7 +1157,12 @@ async function openDetailModal(item) {
   document.body.style.overflow = 'hidden';
 
   const platformKey = item.platformKey;
-  const id = item.id;
+  // 무신사는 카드의 id가 자체 숫자 idx라 상세 API가 쓰는 캠페인 해시와 다름 - url에서 뽑아 쓴다
+  let id = item.id;
+  if (platformKey === 'musinsa' && item.url) {
+    const m = item.url.match(/campaign\/([a-zA-Z0-9]+)/);
+    if (m) id = m[1];
+  }
   const dynamic = document.getElementById('modalDynamic');
   if (!platformKey || !id) {
     if (dynamic) dynamic.innerHTML = '';

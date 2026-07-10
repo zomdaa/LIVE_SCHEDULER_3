@@ -833,10 +833,45 @@ async function fetch11stDetail(id) {
   };
 }
 
+// 무신사 라이브 캠페인 페이지는 서버사이드 렌더링된 HTML에 혜택 배너 이미지가
+// <div class="live-teasing__section__visual"><img src="..."></div> 형태로 그대로
+// 박혀있다 (구조화된 텍스트/상품 API 없음 - 방송 시작 전에는 상품 목록 자체가 없음).
+// 이미지 1~3장을 OCR로 읽어 혜택 텍스트로 쓴다.
+async function fetchMusinsaDetail(campaignId) {
+  const r = await fetch(`https://www.musinsa.com/app/liveshop/campaign/${campaignId}`, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+  });
+  if (!r.ok) return null;
+  const html = await r.text();
+
+  const titleMatch = html.match(/id="fbOgTitle"[^>]*content="([^"]*)"/);
+  const imageMatch = html.match(/id="fbOgImage"[^>]*content="([^"]*)"/);
+
+  const bannerUrls = [];
+  const re = /live-teasing__section__visual">\s*<img src="([^"]+)"/g;
+  let m;
+  while ((m = re.exec(html)) && bannerUrls.length < 3) {
+    bannerUrls.push(m[1].startsWith('//') ? `https:${m[1]}` : m[1]);
+  }
+
+  const ocrResults = await Promise.all(bannerUrls.map(url => ocrExtractText(url)));
+  const benefits = ocrResults.flat();
+
+  return {
+    title: titleMatch ? titleMatch[1] : '',
+    channel: '',
+    image: imageMatch ? imageMatch[1] : '',
+    url: `https://www.musinsa.com/app/liveshop/campaign/${campaignId}`,
+    benefits,
+    products: [],
+  };
+}
+
 const DETAIL_FETCHERS = {
   naver: fetchNaverDetail,
   kakao: fetchKakaoDetail,
   '11st': fetch11stDetail,
+  musinsa: fetchMusinsaDetail,
 };
 
 // ---------------------------------------------------------------------------
