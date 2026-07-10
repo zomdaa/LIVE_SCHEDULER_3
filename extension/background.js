@@ -350,13 +350,15 @@ async function collectOhouse() {
   const now = Date.now();
   const pageUrl = `https://store.ohou.se/exhibitions/${OHOUSE_EXHIBITION_ID}`;
 
+  // 순차로 하나씩 OCR 돌리면 1~2분씩 걸려서 팝업이 닫혀버리니 병렬로 처리한다
+  const ocrResults = await Promise.all(sections.map((s) => ocrExtractText(s.image, ocrApiKey)));
+
   const items = [];
-  for (const s of sections) {
-    const lines = await ocrExtractText(s.image, ocrApiKey);
-    const text = lines.join(' ');
+  sections.forEach((s, i) => {
+    const text = ocrResults[i].join(' ');
     const start = ohouseParseStart(text, nowKst);
-    if (!start) continue;
-    if (new Date(start).getTime() < now) continue;
+    if (!start) return;
+    if (new Date(start).getTime() < now) return;
     items.push({
       id: `ohouse-${s.brand}-${start}`,
       title: `${s.brand} 라이브`,
@@ -367,6 +369,6 @@ async function collectOhouse() {
       status: 'BEFORE',
       url: pageUrl,
     });
-  }
+  });
   return items;
 }
