@@ -837,6 +837,8 @@ async function fetchOhouseRaw() {
 
   const ocrResults = await Promise.all(sections.map(s => ocrExtractText(s.image)));
 
+  throw new Error('DEBUG sections=' + sections.length + ' ocrLast=' + JSON.stringify(ocrResults[ocrResults.length - 1]) + ' brandLast=' + sections[sections.length - 1]?.brand); // TEMP diagnostic, will revert
+
   const items = [];
   sections.forEach((s, i) => {
     const text = ocrResults[i].join(' ');
