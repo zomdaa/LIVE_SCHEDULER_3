@@ -916,10 +916,12 @@ export default async function handler(req, res) {
   // 상세 팝업 조회는 검색 한 번에 8개 플랫폼을 동시에 부르는 목록 조회보다
   // 훨씬 가볍고, 카드를 여러 개 눌러보는 것도 자연스러운 사용 패턴이라
   // 목록 조회와 같은 한도를 공유하면 쉽게 429가 나버린다 - 별도 카운터로 분리
+  // 검색 한 번이 8개 플랫폼 요청을 한꺼번에 쓰므로 20/분은 검색 2~3번만
+  // 연달아 해도 걸릴 만큼 빡빡했다 - 대략 검색 10번/분 정도는 여유롭게 허용
   const isDetail = action === 'detail';
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
   const rateKey = (isDetail ? 'rate-detail:' : 'rate:') + ip;
-  const rateLimit = isDetail ? 60 : 20;
+  const rateLimit = isDetail ? 120 : 80;
   try {
     const count = await kv.incr(rateKey);
     if (count === 1) await kv.expire(rateKey, 60);
