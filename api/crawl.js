@@ -746,6 +746,110 @@ async function fetchMusinsaRaw() {
 }
 
 // ---------------------------------------------------------------------------
+// 오늘의집 라이브
+// (store.ohou.se 의 "LIVE 오늘의집 라이브" 기획전 페이지. 개별 방송마다 별도
+// 페이지가 있는 게 아니라 브랜드별 세션이 전부 한 페이지(exhibition id 15276)
+// 안에 페이지빌더 블록으로 쌓여있다. 브랜드명은
+// "---------브랜드명---------" 형태의 텍스트 구분선으로 나오지만, 날짜/요일/
+// 시간은 각 섹션 첫 이미지 안에 "브랜드 | MM.DD 요일 H시" 식으로 그려져 있어
+// OCR로 읽어야 한다. 상품/혜택은 다루지 않고 일정만 뽑는다 - 페이지가
+// 2025년부터 계속 브랜드 섹션을 누적해온 거라 지난 날짜는 걸러낸다.
+const OHOUSE_EXHIBITION_ID = '15276';
+
+function ohouseHeaders() {
+  return {
+    'Accept': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Referer': `https://store.ohou.se/exhibitions/${OHOUSE_EXHIBITION_ID}`,
+  };
+}
+
+// 페이지빌더 트리를 순서대로 훑어서 "---구분선---" 텍스트를 만날 때마다 새
+// 브랜드 섹션을 시작하고, 그 섹션의 첫 이미지(스케줄 배너로 추정)만 담아둔다
+function collectOhouseSections(units) {
+  const flat = [];
+  function walk(node) {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'text' && node.props?.value) flat.push({ type: 'text', value: node.props.value });
+    if (node.type === 'image' && node.props) flat.push({ type: 'image', src: node.props.src || node.props.url });
+    if (Array.isArray(node.children)) node.children.forEach(walk);
+  }
+  walk(units);
+
+  const sections = [];
+  let current = null;
+  flat.forEach(entry => {
+    if (entry.type === 'text') {
+      const m = entry.value.match(/^-+\s*([^-]+?)\s*-+$/);
+      if (m) {
+        current = { brand: m[1].trim(), image: null };
+        sections.push(current);
+      }
+      return;
+    }
+    if (entry.type === 'image' && current && !current.image) {
+      current.image = entry.src;
+    }
+  });
+  return sections.filter(s => s.image);
+}
+
+function ohouseParseStart(text, nowKst) {
+  const m = text.match(/(\d{1,2})\s*\.\s*(\d{1,2})[^\d]{0,12}?(오전|오후)?\s*(\d{1,2})\s*시/);
+  if (!m) return null;
+  const month = parseInt(m[1], 10);
+  const day = parseInt(m[2], 10);
+  let hour = parseInt(m[4], 10);
+  if (m[3] === '오후' && hour !== 12) hour += 12;
+  if (m[3] === '오전' && hour === 12) hour = 0;
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour < 0 || hour > 23) return null;
+
+  let year = nowKst.getUTCFullYear();
+  // 연말/연초 경계에서 지금보다 한참 이전 달이면 다음 해로 넘어간 것
+  if (month < nowKst.getUTCMonth() + 1 - 6) year += 1;
+  const mm = String(month).padStart(2, '0');
+  const dd = String(day).padStart(2, '0');
+  const hh = String(hour).padStart(2, '0');
+  return `${year}-${mm}-${dd}T${hh}:00:00`;
+}
+
+async function fetchOhouseRaw() {
+  const r = await fetch(`https://store.ohou.se/api/exhibitions/${OHOUSE_EXHIBITION_ID}`, { headers: ohouseHeaders() });
+  if (!r.ok) return [];
+  const data = await r.json();
+  const detail = data.exhibition?.details?.[0];
+  if (!detail) return [];
+  let units;
+  try { units = JSON.parse(detail.units); } catch (e) { return []; }
+
+  const sections = collectOhouseSections(units).slice(0, 60); // 과도한 OCR 호출 방지용 상한
+  const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const now = Date.now();
+  const pageUrl = `https://store.ohou.se/exhibitions/${OHOUSE_EXHIBITION_ID}`;
+
+  const ocrResults = await Promise.all(sections.map(s => ocrExtractText(s.image)));
+
+  const items = [];
+  sections.forEach((s, i) => {
+    const text = ocrResults[i].join(' ');
+    const start = ohouseParseStart(text, nowKst);
+    if (!start) return;
+    if (new Date(start).getTime() < now) return; // 지난 세션은 제외
+    items.push({
+      id: `ohouse-${s.brand}-${start}`,
+      title: `${s.brand} 라이브`,
+      platform: '오늘의집',
+      channel: s.brand,
+      start,
+      end: null,
+      status: 'BEFORE',
+      url: pageUrl,
+    });
+  });
+  return items;
+}
+
+// ---------------------------------------------------------------------------
 // 방송 상세(판매 상품/혜택) 조회 - 캘린더 카드 클릭 시 뜨는 팝업용.
 // 네이버/카카오/11번가는 상세 API가 인증 없이 열려 있어 바로 호출 가능하고,
 // G마켓은 Cloudflare가 이 API도 막고 있어 조회 불가 (팝업에서는 기본 정보만 표시).
@@ -956,6 +1060,7 @@ const PLATFORMS = {
   gmarket: { cacheKey: 'crawl-gmarket:raw', label: 'G마켓 라이브', fetchRaw: fetchGmarketRaw },
   cjonstyle: { cacheKey: 'crawl-cjonstyle:raw', label: 'CJ온스타일', fetchRaw: fetchCjRaw },
   musinsa: { cacheKey: 'crawl-musinsa:raw', label: '무신사 라이브', fetchRaw: fetchMusinsaRaw },
+  ohouse: { cacheKey: 'crawl-ohouse:raw', label: '오늘의집', fetchRaw: fetchOhouseRaw },
 };
 
 export default async function handler(req, res) {
