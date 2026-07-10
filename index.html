@@ -800,7 +800,7 @@ footer {
 .modal-actions {
   display: flex;
   gap: 8px;
-  margin-top: 20px;
+  margin-bottom: 18px;
 }
 .modal-btn {
   flex: 1;
@@ -1142,11 +1142,11 @@ function renderModalBase(item) {
     <span class="modal-platform">${escapeAttr(item.platform || '')}</span>
     <div class="modal-title">${escapeAttr(item.title || '')}</div>
     <div class="modal-meta">${escapeAttr(item.channel || '')}${item.channel && metaText ? ' · ' : ''}${metaText}</div>
-    <div id="modalDynamic"><div class="modal-loading"><div class="spinner"></div>혜택 정보를 불러오는 중..</div></div>
     <div class="modal-actions">
       <a class="modal-btn modal-btn-watch" href="${escapeAttr(item.url || '#')}" target="_blank" rel="noopener">📺 방송 보러가기</a>
       ${canRemind ? `<button class="modal-btn modal-btn-notify${isReminded ? ' on' : ''}" id="modalNotifyBtn" onclick="toggleReminder(event, '${reminderId}')">${isReminded ? '🔔 알림 설정됨' : '🔕 알림받기'}</button>` : ''}
-    </div>`;
+    </div>
+    <div id="modalDynamic"><div class="modal-loading"><div class="spinner"></div>혜택 정보를 불러오는 중..</div></div>`;
 }
 
 async function openDetailModal(item) {
@@ -1167,12 +1167,17 @@ async function openDetailModal(item) {
   try {
     const r = await fetch(`/api/crawl?platform=${encodeURIComponent(platformKey)}&action=detail&id=${encodeURIComponent(id)}`);
     const data = await r.json();
-    const detail = data.detail;
     // 팝업이 이미 닫혔거나 다른 방송으로 바뀌었으면 무시
     if (!document.getElementById('detailModalOverlay').classList.contains('show')) return;
     const dynamicNow = document.getElementById('modalDynamic');
     if (!dynamicNow) return;
 
+    if (!r.ok) {
+      dynamicNow.innerHTML = `<div class="modal-empty">${escapeAttr(data.error || '혜택 정보를 불러오지 못했어요. 잠시 후 다시 시도해주세요.')}</div>`;
+      return;
+    }
+
+    const detail = data.detail;
     if (!detail) {
       dynamicNow.innerHTML = `<div class="modal-empty">이 플랫폼은 상세 혜택 정보를 불러올 수 없어요. 방송 페이지에서 직접 확인해주세요!</div>`;
       return;

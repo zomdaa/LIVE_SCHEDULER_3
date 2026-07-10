@@ -727,12 +727,20 @@ async function ocrExtractText(imageUrl) {
   }
 }
 
+// 네이버/11번가는 "혜택" 전용 필드가 따로 없고 짧은 한 줄짜리 description을 그대로
+// 쓰는데, 실제로는 "신성한쇼핑 x 로보락"처럼 그냥 콜라보/기획전 이름인 경우가 많아
+// 진짜 혜택(할인/적립/증정 등)처럼 안 보이면 걸러낸다. 걸러지면 아래 배너 OCR로 폴백된다
+function looksLikeBenefit(text) {
+  if (!text) return false;
+  return /[0-9]|%|원|쿠폰|적립|할인|무료|사은품|증정|이벤트|추첨|한정|특가|캐시백|포인트|선착순/.test(text);
+}
+
 async function fetchNaverDetail(id) {
   const r = await fetch(`${NAVER_GATEWAY}/v1/broadcast/${id}`, { headers: naverHeaders() });
   if (!r.ok) return null;
   const d = await r.json();
   const benefits = [];
-  if (d.description) benefits.push(d.description);
+  if (d.description && looksLikeBenefit(d.description)) benefits.push(d.description);
 
   if (benefits.length === 0) {
     const bannerUrl = typeof d.broadcastBanner === 'string'
@@ -763,7 +771,7 @@ async function fetchKakaoDetail(id) {
   if (!r.ok) return null;
   const d = await r.json();
   const benefits = [];
-  if (d.mainBenefit) benefits.push(d.mainBenefit);
+  if (d.mainBenefit && looksLikeBenefit(d.mainBenefit)) benefits.push(d.mainBenefit);
   (d.liveBaseBenefits || []).forEach(b => {
     if (!b || !b.title) return;
     benefits.push(b.contents ? `${b.title}: ${b.contents}` : b.title);
@@ -807,7 +815,7 @@ async function fetch11stDetail(id) {
   if (!r.ok) return null;
   const d = await r.json();
   const benefits = [];
-  if (d.description) benefits.push(d.description);
+  if (d.description && looksLikeBenefit(d.description)) benefits.push(d.description);
   const products = (d.products || []).map(p => ({
     name: p.name || '',
     image: p.thumbnail || '',
@@ -856,12 +864,17 @@ export default async function handler(req, res) {
   }
   const cleanKeyword = keyword ? String(keyword).trim() : '';
 
+  // 상세 팝업 조회는 검색 한 번에 8개 플랫폼을 동시에 부르는 목록 조회보다
+  // 훨씬 가볍고, 카드를 여러 개 눌러보는 것도 자연스러운 사용 패턴이라
+  // 목록 조회와 같은 한도를 공유하면 쉽게 429가 나버린다 - 별도 카운터로 분리
+  const isDetail = action === 'detail';
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
-  const rateKey = 'rate:' + ip;
+  const rateKey = (isDetail ? 'rate-detail:' : 'rate:') + ip;
+  const rateLimit = isDetail ? 60 : 20;
   try {
     const count = await kv.incr(rateKey);
     if (count === 1) await kv.expire(rateKey, 60);
-    if (count > 20) {
+    if (count > rateLimit) {
       return res.status(429).json({ error: '요청이 너무 많아요. 잠시 후 다시 시도해주세요.' });
     }
   } catch (e) {}
