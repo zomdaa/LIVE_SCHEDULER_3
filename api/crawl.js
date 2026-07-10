@@ -693,12 +693,57 @@ async function fetchMusinsaRaw() {
 // 네이버/카카오/11번가는 상세 API가 인증 없이 열려 있어 바로 호출 가능하고,
 // G마켓은 Cloudflare가 이 API도 막고 있어 조회 불가 (팝업에서는 기본 정보만 표시).
 
+// 혜택이 구조화된 텍스트 필드 없이 "배너 이미지"로만 제공되는 경우가 많아
+// (네이버 broadcastBanner, 카카오 eventLiveBanner) OCR.space 무료 API로
+// 이미지 속 텍스트를 읽어온다. 월 25,000건까지 무료, 카드 등록 불필요.
+// OCR_SPACE_API_KEY 환경변수가 없으면 그냥 빈 배열을 반환해 조용히 스킵된다 -
+// 구조화된 텍스트 필드가 이미 있는 방송에서는 호출하지 않아 무료 한도를 아낀다.
+const OCR_SPACE_API = 'https://api.ocr.space/parse/imageurl';
+
+async function ocrExtractText(imageUrl) {
+  const apiKey = process.env.OCR_SPACE_API_KEY;
+  if (!apiKey || !imageUrl) return [];
+  try {
+    const params = new URLSearchParams({
+      apikey: apiKey,
+      url: imageUrl,
+      language: 'kor',
+      OCREngine: '2',
+      scale: 'true',
+      isOverlayRequired: 'false',
+    });
+    const r = await fetch(OCR_SPACE_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params,
+    });
+    if (!r.ok) return [];
+    const data = await r.json();
+    if (data.IsErroredOnProcessing) return [];
+    const text = data.ParsedResults?.[0]?.ParsedText || '';
+    return text
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => line.length >= 2);
+  } catch (e) {
+    return [];
+  }
+}
+
 async function fetchNaverDetail(id) {
   const r = await fetch(`${NAVER_GATEWAY}/v1/broadcast/${id}`, { headers: naverHeaders() });
   if (!r.ok) return null;
   const d = await r.json();
   const benefits = [];
   if (d.description) benefits.push(d.description);
+
+  if (benefits.length === 0) {
+    const bannerUrl = typeof d.broadcastBanner === 'string'
+      ? d.broadcastBanner
+      : (d.broadcastBanner?.imageUrl || d.broadcastBanner?.url || null);
+    if (bannerUrl) benefits.push(...await ocrExtractText(bannerUrl));
+  }
+
   const products = (d.shoppingProducts || []).map(p => ({
     name: p.name || p.productName || '',
     image: p.image || '',
@@ -726,6 +771,11 @@ async function fetchKakaoDetail(id) {
     if (!b || !b.title) return;
     benefits.push(b.contents ? `${b.title}: ${b.contents}` : b.title);
   });
+
+  if (benefits.length === 0) {
+    const bannerUrl = d.eventLiveBanner?.imageBanner?.imageUrl || d.eventLiveBanner?.shortCutBanner?.imageUrl || null;
+    if (bannerUrl) benefits.push(...await ocrExtractText(bannerUrl));
+  }
 
   let products = [];
   const moduleId = d.liveProductDisplayModules?.[0]?.id;
