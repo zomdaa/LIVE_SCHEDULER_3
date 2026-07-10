@@ -1576,10 +1576,13 @@ async function doSearch() {
     const rawPast = searchData.past || [];
 
     const now = new Date();
+    const upcomingCutoff = new Date(now.getTime() + 31 * 24 * 60 * 60 * 1000);
     const stillUpcoming = [];
     const endedFromUpcoming = [];
 
     rawUpcoming.forEach(item => {
+      const start = parseLabangDate(item.start);
+      if (start && start > upcomingCutoff) return; // 검색일 기준 +31일 넘는 예정 방송은 제외
       const end = parseLabangDate(item.end);
       const isEnded = end ? end < now : false;
       if (isEnded) {
