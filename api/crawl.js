@@ -847,24 +847,24 @@ async function fetchMusinsaDetail(campaignId) {
   const titleMatch = html.match(/id="fbOgTitle"[^>]*content="([^"]*)"/);
   const imageMatch = html.match(/id="fbOgImage"[^>]*content="([^"]*)"/);
 
-  // 페이지 하단에는 이 캠페인과 무관한 "라이브 접속 방법" 안내 이미지가 모든
-  // 캠페인에 공통으로 재사용되는데, 제목도 주의사항도 없이 이미지 하나만 덜렁
-  // 들어있는 게 특징이다 - 제목(header) 또는 주의사항(notice)이 있는 섹션만
-  // 진짜 이 캠페인의 혜택 배너로 보고 나머지는 걸러낸다
   const bannerUrls = [];
   const sectionRe = /<section class="live-teasing__section">([\s\S]*?)<\/section>/g;
   let s;
-  while ((s = sectionRe.exec(html)) && bannerUrls.length < 3) {
+  while ((s = sectionRe.exec(html)) && bannerUrls.length < 4) {
     const block = s[1];
     const title = block.match(/live-teasing__section__header__title">([^<]*)</)?.[1] || '';
-    if (/접속|브랜드|Coming Soon/i.test(title)) continue;
-    if (!title && !/live-teasing__notice/.test(block)) continue;
+    if (/Coming Soon/i.test(title)) continue;
     const img = block.match(/live-teasing__section__visual">\s*<img src="([^"]+)"/)?.[1];
     if (img) bannerUrls.push(img.startsWith('//') ? `https:${img}` : img);
   }
 
+  // 매 캠페인마다 새로 생성되는(해시가 매번 다른) "라이브 접속 방법" 안내 이미지가
+  // 끼어있는데, HTML 구조로는 다른 배너와 구분이 안 되고 이미지 자체 내용이
+  // 항상 같은 문구를 담고 있다 - OCR 결과 안에서 그 문구가 나온 이미지 자체를 통째로 버린다
   const ocrResults = await Promise.all(bannerUrls.map(url => ocrExtractText(url)));
-  const benefits = ocrResults.flat();
+  const benefits = ocrResults
+    .filter(lines => !lines.some(l => /접속\s*방법|라이브\s*화면\s*터치/.test(l)))
+    .flat();
 
   return {
     title: titleMatch ? titleMatch[1] : '',
