@@ -2,11 +2,14 @@
   "manifest_version": 3,
   "name": "BUY NOW OR LIVE - 스케줄 수집기",
   "version": "1.0.0",
-  "description": "올리브영/G마켓 라이브 편성표를 주기적으로 수집해 buynoworlive 백엔드로 전송합니다",
+  "description": "올리브영/G마켓/오늘의집 라이브 편성표를 주기적으로 수집해 buynoworlive 백엔드로 전송합니다",
   "permissions": ["alarms", "tabs", "scripting", "storage"],
   "host_permissions": [
     "https://m.oliveyoung.co.kr/*",
     "https://m.gmarket.co.kr/*",
+    "https://store.ohou.se/*",
+    "https://prs.ohouse.com/*",
+    "https://api.ocr.space/*",
     "https://buynoworlive.vercel.app/*"
   ],
   "background": {

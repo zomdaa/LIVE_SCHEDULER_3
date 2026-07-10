@@ -1,6 +1,6 @@
-// Vercel 서버 IP가 올리브영 WAF / G마켓 Cloudflare 챌린지에 막혀 있어,
+// Vercel 서버 IP가 올리브영/오늘의집 WAF나 G마켓 Cloudflare 챌린지에 막혀 있어,
 // 대신 이 확장프로그램이 설치된 실제 브라우저(실사용자 IP)로 주기적으로
-// 두 사이트를 방문해 편성표를 수집하고 /api/ingest 로 전송한다.
+// 이 사이트들을 방문해 편성표를 수집하고 /api/ingest 로 전송한다.
 
 const INGEST_URL = 'https://buynoworlive.vercel.app/api/ingest';
 const ALARM_NAME = 'scheduleSync';
@@ -29,6 +29,11 @@ async function getSecret() {
   return ingestSecret || '';
 }
 
+async function getOcrApiKey() {
+  const { ocrApiKey } = await chrome.storage.local.get('ocrApiKey');
+  return ocrApiKey || '';
+}
+
 async function runAll() {
   const secret = await getSecret();
   if (!secret) {
@@ -37,9 +42,10 @@ async function runAll() {
     return result;
   }
 
-  const [oliveyoungResult, gmarketResult] = await Promise.allSettled([
+  const [oliveyoungResult, gmarketResult, ohouseResult] = await Promise.allSettled([
     collectOliveyoung(),
     collectGmarket(),
+    collectOhouse(),
   ]);
 
   const summary = {};
@@ -56,6 +62,13 @@ async function runAll() {
     summary.gmarket = { count: gmarketResult.value.length, ingested: ok, debug: gmarketResult.value._debug };
   } else {
     summary.gmarket = { error: gmarketResult.reason?.message || String(gmarketResult.reason) };
+  }
+
+  if (ohouseResult.status === 'fulfilled') {
+    const ok = await ingest('ohouse', ohouseResult.value, secret);
+    summary.ohouse = { count: ohouseResult.value.length, ingested: ok };
+  } else {
+    summary.ohouse = { error: ohouseResult.reason?.message || String(ohouseResult.reason) };
   }
 
   await chrome.storage.local.set({ lastRun: new Date().toISOString(), lastResult: summary });
@@ -233,4 +246,127 @@ async function collectGmarket() {
   } finally {
     chrome.tabs.remove(tab.id).catch(() => {});
   }
+}
+
+// ---------------------------------------------------------------------------
+// 오늘의집: store.ohou.se 도 Akamai WAF가 IP 기반으로 데이터센터를 막아서
+// 백그라운드 fetch만으로 충분하다(올리브영과 같은 패턴, G마켓처럼 탭은 불필요).
+// 개별 방송 API가 없고 브랜드별 세션이 전부 하나의 기획전 페이지(id 15276)
+// 안에 페이지빌더 블록으로 쌓여있다. 브랜드명은 텍스트 구분선으로 나오지만
+// 날짜/요일/시간은 각 섹션 첫 이미지 안에 그려져 있어 OCR.space로 읽는다.
+const OHOUSE_EXHIBITION_ID = '15276';
+const OCR_SPACE_API = 'https://api.ocr.space/parse/imageurl';
+
+async function ocrExtractText(imageUrl, apiKey) {
+  if (!apiKey || !imageUrl) return [];
+  try {
+    const params = new URLSearchParams({
+      apikey: apiKey,
+      url: imageUrl,
+      language: 'kor',
+      OCREngine: '2',
+      scale: 'true',
+      isOverlayRequired: 'false',
+    });
+    const r = await fetch(`${OCR_SPACE_API}?${params}`);
+    if (!r.ok) return [];
+    const data = await r.json();
+    if (data.IsErroredOnProcessing) return [];
+    const text = data.ParsedResults?.[0]?.ParsedText || '';
+    return text.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length >= 2);
+  } catch (e) {
+    return [];
+  }
+}
+
+function collectOhouseSections(units) {
+  const flat = [];
+  function walk(node) {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'text' && node.props?.value) flat.push({ type: 'text', value: node.props.value });
+    if (node.type === 'image' && node.props) flat.push({ type: 'image', src: node.props.src || node.props.url });
+    if (Array.isArray(node.children)) node.children.forEach(walk);
+  }
+  walk(units);
+
+  const sections = [];
+  let current = null;
+  flat.forEach((entry) => {
+    if (entry.type === 'text') {
+      const m = entry.value.match(/^-+\s*([^-]+?)\s*-+$/);
+      if (m) {
+        current = { brand: m[1].trim(), image: null };
+        sections.push(current);
+      }
+      return;
+    }
+    if (entry.type === 'image' && current && !current.image) {
+      current.image = entry.src;
+    }
+  });
+  return sections.filter((s) => s.image);
+}
+
+function ohouseParseStart(text, nowKst) {
+  // "07.16"의 마침표를 OCR이 가끔 놓쳐서 "0716"처럼 붙어나오기도 해 두 패턴 다 시도한다
+  let m = text.match(/(\d{1,2})\s*\.\s*(\d{1,2})[^\d]{0,12}?(오전|오후)?\s*(\d{1,2})\s*시/);
+  let month, day;
+  if (m) {
+    month = parseInt(m[1], 10);
+    day = parseInt(m[2], 10);
+  } else {
+    m = text.match(/(\d{2})(\d{2})[^\d]{0,12}?(오전|오후)?\s*(\d{1,2})\s*시/);
+    if (!m) return null;
+    month = parseInt(m[1], 10);
+    day = parseInt(m[2], 10);
+  }
+  let hour = parseInt(m[4], 10);
+  if (m[3] === '오후' && hour !== 12) hour += 12;
+  if (m[3] === '오전' && hour === 12) hour = 0;
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour < 0 || hour > 23) return null;
+
+  let year = nowKst.getUTCFullYear();
+  if (month < nowKst.getUTCMonth() + 1 - 6) year += 1;
+  const mm = String(month).padStart(2, '0');
+  const dd = String(day).padStart(2, '0');
+  const hh = String(hour).padStart(2, '0');
+  return `${year}-${mm}-${dd}T${hh}:00:00`;
+}
+
+async function collectOhouse() {
+  const ocrApiKey = await getOcrApiKey();
+  if (!ocrApiKey) return [];
+
+  const res = await fetch(`https://store.ohou.se/api/exhibitions/${OHOUSE_EXHIBITION_ID}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  const detail = data.exhibition?.details?.[0];
+  if (!detail) return [];
+  let units;
+  try { units = JSON.parse(detail.units); } catch (e) { return []; }
+
+  const sections = collectOhouseSections(units).slice(0, 60);
+  const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const now = Date.now();
+  const pageUrl = `https://store.ohou.se/exhibitions/${OHOUSE_EXHIBITION_ID}`;
+
+  const items = [];
+  for (const s of sections) {
+    const lines = await ocrExtractText(s.image, ocrApiKey);
+    const text = lines.join(' ');
+    const start = ohouseParseStart(text, nowKst);
+    if (!start) continue;
+    if (new Date(start).getTime() < now) continue;
+    items.push({
+      id: `ohouse-${s.brand}-${start}`,
+      title: `${s.brand} 라이브`,
+      platform: '오늘의집',
+      channel: s.brand,
+      start,
+      end: null,
+      status: 'BEFORE',
+      url: pageUrl,
+    });
+  }
+  return items;
 }
