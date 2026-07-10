@@ -795,10 +795,18 @@ function collectOhouseSections(units) {
 }
 
 function ohouseParseStart(text, nowKst) {
-  const m = text.match(/(\d{1,2})\s*\.\s*(\d{1,2})[^\d]{0,12}?(오전|오후)?\s*(\d{1,2})\s*시/);
-  if (!m) return null;
-  const month = parseInt(m[1], 10);
-  const day = parseInt(m[2], 10);
+  // "07.16"의 마침표를 OCR이 가끔 놓쳐서 "0716"처럼 붙어나오기도 해 두 패턴 다 시도한다
+  let m = text.match(/(\d{1,2})\s*\.\s*(\d{1,2})[^\d]{0,12}?(오전|오후)?\s*(\d{1,2})\s*시/);
+  let month, day;
+  if (m) {
+    month = parseInt(m[1], 10);
+    day = parseInt(m[2], 10);
+  } else {
+    m = text.match(/(\d{2})(\d{2})[^\d]{0,12}?(오전|오후)?\s*(\d{1,2})\s*시/);
+    if (!m) return null;
+    month = parseInt(m[1], 10);
+    day = parseInt(m[2], 10);
+  }
   let hour = parseInt(m[4], 10);
   if (m[3] === '오후' && hour !== 12) hour += 12;
   if (m[3] === '오전' && hour === 12) hour = 0;
