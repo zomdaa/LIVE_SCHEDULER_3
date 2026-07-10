@@ -841,17 +841,23 @@ async function fetchMusinsaDetail(campaignId) {
   const r = await fetch(`https://www.musinsa.com/app/liveshop/campaign/${campaignId}`, {
     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
   });
-  if (!r.ok) throw new Error(`musinsa campaign page failed: ${r.status}`); // TEMP diagnostic, will revert
+  if (!r.ok) return null;
   const html = await r.text();
 
   const titleMatch = html.match(/id="fbOgTitle"[^>]*content="([^"]*)"/);
   const imageMatch = html.match(/id="fbOgImage"[^>]*content="([^"]*)"/);
 
+  // 페이지 하단에는 이 캠페인과 무관한 "라이브 접속 방법" 안내, 다른 브랜드 교차홍보
+  // 배너도 같은 클래스로 섞여 있어 - 섹션 제목으로 그런 것들을 걸러낸다
   const bannerUrls = [];
-  const re = /live-teasing__section__visual">\s*<img src="([^"]+)"/g;
-  let m;
-  while ((m = re.exec(html)) && bannerUrls.length < 3) {
-    bannerUrls.push(m[1].startsWith('//') ? `https:${m[1]}` : m[1]);
+  const sectionRe = /<section class="live-teasing__section">([\s\S]*?)<\/section>/g;
+  let s;
+  while ((s = sectionRe.exec(html)) && bannerUrls.length < 3) {
+    const block = s[1];
+    const title = block.match(/live-teasing__section__header__title">([^<]*)</)?.[1] || '';
+    if (/접속|브랜드|Coming Soon/i.test(title)) continue;
+    const img = block.match(/live-teasing__section__visual">\s*<img src="([^"]+)"/)?.[1];
+    if (img) bannerUrls.push(img.startsWith('//') ? `https:${img}` : img);
   }
 
   const ocrResults = await Promise.all(bannerUrls.map(url => ocrExtractText(url)));
