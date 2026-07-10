@@ -727,6 +727,19 @@ footer {
 }
 .modal-image img { width: 100%; display: block; object-fit: cover; max-height: 220px; }
 
+.modal-benefit-images {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.modal-benefit-images img {
+  width: 100%;
+  display: block;
+  border-radius: 10px;
+  border: 1px solid var(--hairline);
+  background: var(--bone);
+}
+
 .modal-section-title {
   font-size: 12px;
   font-weight: 800;
@@ -1194,6 +1207,9 @@ async function openDetailModal(item) {
     }
     if (detail.benefits && detail.benefits.length) {
       html += `<div class="modal-section-title">🎁 혜택</div><ul class="modal-benefits">${detail.benefits.map(b => `<li>${escapeAttr(b).replace(/\n/g, '<br>')}</li>`).join('')}</ul>`;
+    }
+    if (detail.benefitImages && detail.benefitImages.length) {
+      html += `<div class="modal-section-title">🎁 혜택</div><div class="modal-benefit-images">${detail.benefitImages.map(src => `<img src="${escapeAttr(src)}" alt="" loading="lazy" />`).join('')}</div>`;
     }
     if (detail.products && detail.products.length) {
       html += `<div class="modal-section-title">🛍️ 판매 상품 (${detail.products.length})</div><div class="modal-products">${detail.products.map(renderProduct).join('')}</div>`;

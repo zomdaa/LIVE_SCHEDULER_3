@@ -742,14 +742,12 @@ async function fetchNaverDetail(id) {
   const benefits = [];
   if (d.description && looksLikeBenefit(d.description)) benefits.push(d.description);
 
+  const benefitImages = [];
   if (benefits.length === 0) {
     const bannerUrl = typeof d.broadcastBanner === 'string'
       ? d.broadcastBanner
       : (d.broadcastBanner?.imageUrl || d.broadcastBanner?.url || null);
-    if (bannerUrl) {
-      const lines = await ocrExtractText(bannerUrl);
-      if (lines.length) benefits.push(lines.join('\n'));
-    }
+    if (bannerUrl) benefitImages.push(bannerUrl);
   }
 
   const products = (d.shoppingProducts || []).map(p => ({
@@ -765,6 +763,7 @@ async function fetchNaverDetail(id) {
     image: d.standByImage || d.previewImage || '',
     url: d.broadcastEndUrl || `https://shoppinglive.naver.com/lives/${id}`,
     benefits,
+    benefitImages,
     products,
   };
 }
@@ -780,12 +779,10 @@ async function fetchKakaoDetail(id) {
     benefits.push(b.contents ? `${b.title}: ${b.contents}` : b.title);
   });
 
+  const benefitImages = [];
   if (benefits.length === 0) {
     const bannerUrl = d.eventLiveBanner?.imageBanner?.imageUrl || d.eventLiveBanner?.shortCutBanner?.imageUrl || null;
-    if (bannerUrl) {
-      const lines = await ocrExtractText(bannerUrl);
-      if (lines.length) benefits.push(lines.join('\n'));
-    }
+    if (bannerUrl) benefitImages.push(bannerUrl);
   }
 
   let products = [];
@@ -810,6 +807,7 @@ async function fetchKakaoDetail(id) {
     image: d.imageUrl || '',
     url: `https://shoppinglive.kakao.com/live/${id}`,
     benefits,
+    benefitImages,
     products,
   };
 }
@@ -842,7 +840,9 @@ async function fetch11stDetail(id) {
 // 무신사 라이브 캠페인 페이지는 서버사이드 렌더링된 HTML에 혜택 배너 이미지가
 // <div class="live-teasing__section__visual"><img src="..."></div> 형태로 그대로
 // 박혀있다 (구조화된 텍스트/상품 API 없음 - 방송 시작 전에는 상품 목록 자체가 없음).
-// 이미지 1~3장을 OCR로 읽어 혜택 텍스트로 쓴다.
+// OCR로 뽑은 텍스트를 그대로 보여주면 줄글이 부자연스러워 - 대신 이미지를 그대로
+// 팝업에 띄우고, OCR은 매 캠페인마다 새로 생성되는(해시가 매번 다른) "라이브 접속
+// 방법" 안내 이미지를 걸러내는 용도로만 조용히 쓴다.
 async function fetchMusinsaDetail(campaignId) {
   const r = await fetch(`https://www.musinsa.com/app/liveshop/campaign/${campaignId}`, {
     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
@@ -864,20 +864,19 @@ async function fetchMusinsaDetail(campaignId) {
     if (img) bannerUrls.push(img.startsWith('//') ? `https:${img}` : img);
   }
 
-  // 매 캠페인마다 새로 생성되는(해시가 매번 다른) "라이브 접속 방법" 안내 이미지가
-  // 끼어있는데, HTML 구조로는 다른 배너와 구분이 안 되고 이미지 자체 내용이
-  // 항상 같은 문구를 담고 있다 - OCR 결과 안에서 그 문구가 나온 이미지 자체를 통째로 버린다
   const ocrResults = await Promise.all(bannerUrls.map(url => ocrExtractText(url)));
-  const benefits = ocrResults
-    .filter(lines => lines.length && !lines.some(l => /접속\s*방법|라이브\s*화면\s*터치/.test(l)))
-    .map(lines => lines.join('\n'));
+  const benefitImages = bannerUrls.filter((_, i) => {
+    const lines = ocrResults[i];
+    return lines.length && !lines.some(l => /접속\s*방법|라이브\s*화면\s*터치/.test(l));
+  });
 
   return {
     title: titleMatch ? titleMatch[1] : '',
     channel: '',
     image: imageMatch ? imageMatch[1] : '',
     url: `https://www.musinsa.com/app/liveshop/campaign/${campaignId}`,
-    benefits,
+    benefits: [],
+    benefitImages,
     products: [],
   };
 }
