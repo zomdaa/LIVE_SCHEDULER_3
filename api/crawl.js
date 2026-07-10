@@ -121,6 +121,63 @@ async function fetchNaverRaw() {
   return items;
 }
 
+// 캘린더(/v1/calendar/broadcast/timeline) API는 네이버가 자체적으로 큐레이션한
+// 일부 방송만 보여준다 - 캘린더에 노출되지 않은 방송은 실제로 예정돼 있어도
+// 여기서는 빠진다 (실측 확인함). 반면 /v1/search/broadcast는 네이버 쇼핑라이브
+// 검색창이 쓰는 진짜 검색 API라 빠짐없이 나오고, 2020년대까지의 과거 방송도
+// 함께 나온다. 그래서 키워드가 있는 검색은 캘린더 대신 이 API를 직접 쓴다.
+const NAVER_SEARCH_MAX_PAGES = 5;
+
+function naverSearchItemToCard(b) {
+  return {
+    id: b.id,
+    title: b.title,
+    platform: '네이버쇼핑라이브',
+    channel: b.nickname || '',
+    start: b.expectedStartDate || b.startDate || null,
+    end: b.expectedEndDate || b.endDate || null,
+    status: b.status,
+    url: b.broadcastEndUrl || ('https://shoppinglive.naver.com/lives/' + b.id),
+  };
+}
+
+async function fetchNaverSearchRaw(keyword) {
+  const items = [];
+  const seen = new Set();
+  const now = Date.now();
+  let next = null;
+
+  for (let page = 0; page < NAVER_SEARCH_MAX_PAGES; page++) {
+    const params = new URLSearchParams({ query: keyword, size: '10' });
+    if (next !== null) params.set('next', String(next));
+
+    let r = await fetch(`${NAVER_GATEWAY}/v1/search/broadcast?${params}`, { headers: naverHeaders() });
+    if (!r.ok) {
+      await new Promise(resolve => setTimeout(resolve, 400));
+      r = await fetch(`${NAVER_GATEWAY}/v1/search/broadcast?${params}`, { headers: naverHeaders() });
+      if (!r.ok) break;
+    }
+    const data = await r.json();
+    const list = data.list || [];
+    if (list.length === 0) break;
+
+    list.forEach(b => {
+      const endMs = b.endDate ? new Date(b.endDate).getTime() : null;
+      if (endMs && endMs < now) return; // 이미 끝난 방송은 과거 검색(라방바) 쪽에서 다룸
+      const card = naverSearchItemToCard(b);
+      if (card.id && !seen.has(card.id)) {
+        seen.add(card.id);
+        items.push(card);
+      }
+    });
+
+    if (data.next === null || data.next === undefined) break;
+    next = data.next;
+  }
+
+  return items;
+}
+
 // ---------------------------------------------------------------------------
 // 카카오쇼핑라이브
 // (shoppinglive.kakao.com /calendar 페이지가 사용하는 API,
@@ -947,6 +1004,28 @@ export default async function handler(req, res) {
         try { await kv.set(detailCacheKey, detail, { ex: CACHE_TTL }); } catch (e) {}
       }
       return res.status(200).json({ detail });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // 네이버는 키워드가 있으면 캘린더 크롤 캐시 대신 검색 API를 직접 쓴다 (위 주석 참고)
+  if (platform === 'naver' && cleanKeyword) {
+    const searchCacheKey = 'crawl-naver-search:' + cleanKeyword.toLowerCase();
+    try {
+      const cached = await kv.get(searchCacheKey);
+      if (cached) {
+        const upcoming = [...cached].sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+        return res.status(200).json({ upcoming, total: upcoming.length, keyword: cleanKeyword, platform: config.label });
+      }
+    } catch (e) {}
+    try {
+      const items = await fetchNaverSearchRaw(cleanKeyword);
+      if (items.length > 0) {
+        try { await kv.set(searchCacheKey, items, { ex: CACHE_TTL }); } catch (e) {}
+      }
+      const upcoming = [...items].sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+      return res.status(200).json({ upcoming, total: upcoming.length, keyword: cleanKeyword, platform: config.label });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
