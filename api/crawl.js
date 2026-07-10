@@ -712,11 +712,8 @@ async function ocrExtractText(imageUrl) {
       scale: 'true',
       isOverlayRequired: 'false',
     });
-    const r = await fetch(OCR_SPACE_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params,
-    });
+    // OCR.space의 /parse/imageurl 엔드포인트는 POST를 받지 않는다 (404 Cannot POST) - GET만 동작함
+    const r = await fetch(`${OCR_SPACE_API}?${params}`);
     if (!r.ok) return [];
     const data = await r.json();
     if (data.IsErroredOnProcessing) return [];
