@@ -357,8 +357,15 @@ async function collectOhouse() {
   const now = Date.now();
   const pageUrl = `https://store.ohou.se/exhibitions/${OHOUSE_EXHIBITION_ID}`;
 
-  // 순차로 하나씩 OCR 돌리면 1~2분씩 걸려서 팝업이 닫혀버리니 병렬로 처리한다
-  const ocrResults = await Promise.all(sections.map((s) => ocrExtractText(s.image, ocrApiKey)));
+  // 완전 순차(1~2분+, 팝업이 닫혀버림)와 완전 병렬(OCR.space 무료 티어 동시요청
+  // 제한에 걸려 대부분 실패, 실측 35개 중 30개 실패) 둘 다 문제라 5개씩 나눠 처리한다
+  const OCR_BATCH_SIZE = 5;
+  const ocrResults = [];
+  for (let i = 0; i < sections.length; i += OCR_BATCH_SIZE) {
+    const batch = sections.slice(i, i + OCR_BATCH_SIZE);
+    const batchResults = await Promise.all(batch.map((s) => ocrExtractText(s.image, ocrApiKey)));
+    ocrResults.push(...batchResults);
+  }
   debug.ocrEmptyCount = ocrResults.filter((l) => l.length === 0).length;
   debug.ocrSample = ocrResults.slice(0, 3).map((l) => l.join(' | '));
 
