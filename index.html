@@ -462,6 +462,42 @@ main {
 }
 .search-wrap button.bounce { animation: btn-bounce 0.45s ease; }
 
+.loading-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 2.5rem 1.5rem 2rem;
+  position: relative;
+  z-index: 1;
+}
+.loading-char-wrap {
+  position: relative;
+  width: 140px;
+  height: 140px;
+}
+.loading-char {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.15));
+  animation: loading-pop 0.5s steps(1) infinite;
+}
+@keyframes loading-pop {
+  0%, 49% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+  51%, 100% { transform: scale(1); }
+}
+.loading-text {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--charcoal);
+  text-align: center;
+}
+
 .section { margin-bottom: 2rem; }
 .section-header {
   display: flex;
@@ -1044,6 +1080,7 @@ function goHome() {
   input.value = '';
   statusEl.innerHTML = '';
   verdictEl.classList.remove('show');
+  stopLoadingAnimation();
   resultEl.innerHTML = '<div class="empty">🔍 브랜드명을 검색하면<br>예정 방송과 과거 방송을 함께 보여드려요</div>';
   document.getElementById('priceBtn').style.display = 'none';
   document.getElementById('naverBtn').style.display = 'none';
@@ -1416,6 +1453,33 @@ function setStatus(msg, loading) {
     : msg ? `<span>${msg}</span>` : '';
 }
 
+const LOADING_CHAR_IMAGES = [
+  'https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/load1.png',
+  'https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/load2.png',
+];
+let loadingAnimTimer = null;
+
+function startLoadingAnimation() {
+  resultEl.innerHTML = `
+    <div class="loading-block">
+      <div class="loading-char-wrap"><img class="loading-char" id="loadingCharImg" src="${LOADING_CHAR_IMAGES[0]}" alt="" /></div>
+      <div class="loading-text">최저가 혜택을 위해 열심히 찾는 중..!</div>
+    </div>`;
+  const imgEl = document.getElementById('loadingCharImg');
+  let idx = 0;
+  loadingAnimTimer = setInterval(() => {
+    idx = 1 - idx;
+    if (imgEl) imgEl.src = LOADING_CHAR_IMAGES[idx];
+  }, 350);
+}
+
+function stopLoadingAnimation() {
+  if (loadingAnimTimer) {
+    clearInterval(loadingAnimTimer);
+    loadingAnimTimer = null;
+  }
+}
+
 function parseLabangDate(str) {
   if (!str || str.length < 8) return null;
   // 6개 플랫폼 직접 크롤러는 ISO 형식("2026-07-09T20:00:00")을 쓰고,
@@ -1649,11 +1713,11 @@ async function doSearch() {
 
   btn.disabled = true;
   verdictEl.classList.remove('show');
-  resultEl.innerHTML = '';
+  startLoadingAnimation();
   document.getElementById('priceBtn').style.display = 'none';
   document.getElementById('naverBtn').style.display = 'none';
   document.getElementById('lowestPriceSection').classList.remove('show');
-  setStatus(`최저가 혜택을 위해 열심히 찾는 중..!`, true);
+  setStatus('');
 
   loadLowestPrice(keyword);
 
@@ -1771,6 +1835,7 @@ async function doSearch() {
   } catch (e) {
     setStatus('오류: ' + e.message);
   } finally {
+    stopLoadingAnimation();
     btn.disabled = false;
   }
 }
