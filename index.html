@@ -369,6 +369,60 @@ main {
 }
 .verdict-text .highlight { color: var(--primary-deep); font-weight: 800; }
 
+.lowest-price-card {
+  display: none;
+  align-items: center;
+  gap: 14px;
+  background: var(--card);
+  border: 1.5px solid #1a1814;
+  box-shadow: 2px 2px 0 #1a1814;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-top: 1.25rem;
+  position: relative;
+  z-index: 1;
+  text-decoration: none;
+  color: inherit;
+}
+.lowest-price-card.show { display: flex; }
+.lowest-price-image {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bone);
+}
+.lowest-price-info { flex: 1; min-width: 0; }
+.lowest-price-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--primary-deep);
+  letter-spacing: 0.02em;
+  margin-bottom: 3px;
+}
+.lowest-price-name {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.lowest-price-mall {
+  font-size: 11px;
+  color: var(--ash);
+  margin-top: 2px;
+}
+.lowest-price-value {
+  flex-shrink: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--primary-deep);
+  white-space: nowrap;
+}
+
 .status {
   font-size: 13px;
   color: var(--mute);
@@ -878,6 +932,16 @@ footer {
     <div class="hot-rank-title">🔥 기대받는 HOT 방송!</div>
     <div class="hot-rank-list" id="hotRankList"></div>
   </div>
+
+  <a class="lowest-price-card" id="lowestPriceCard" target="_blank" rel="noopener">
+    <img class="lowest-price-image" id="lowestPriceImage" src="" alt="" />
+    <div class="lowest-price-info">
+      <div class="lowest-price-label">🏷️ 네이버 최저가</div>
+      <div class="lowest-price-name" id="lowestPriceName"></div>
+      <div class="lowest-price-mall" id="lowestPriceMall"></div>
+    </div>
+    <div class="lowest-price-value" id="lowestPriceValue"></div>
+  </a>
 
   <div class="verdict" id="verdict">
     <div class="verdict-tail"></div>
@@ -1544,6 +1608,25 @@ function makeVerdict(upcoming, past) {
   }
 }
 
+async function loadLowestPrice(keyword) {
+  const card = document.getElementById('lowestPriceCard');
+  try {
+    const r = await fetch(`/api/naver-price?keyword=${encodeURIComponent(keyword)}`);
+    if (!r.ok) return;
+    const data = await r.json();
+    if (!data.lowestPrice) return;
+
+    document.getElementById('lowestPriceImage').src = data.image || '';
+    document.getElementById('lowestPriceName').textContent = data.productName || '';
+    document.getElementById('lowestPriceMall').textContent = data.mallName || '';
+    document.getElementById('lowestPriceValue').textContent = Number(data.lowestPrice).toLocaleString('ko-KR') + '원';
+    card.href = data.productUrl || '#';
+    card.classList.add('show');
+  } catch (e) {
+    // 실패 시 조용히 숨김 유지
+  }
+}
+
 async function doSearch() {
   const keyword = input.value.trim();
   if (!keyword) return;
@@ -1555,7 +1638,10 @@ async function doSearch() {
   resultEl.innerHTML = '';
   document.getElementById('priceBtn').style.display = 'none';
   document.getElementById('naverBtn').style.display = 'none';
+  document.getElementById('lowestPriceCard').classList.remove('show');
   setStatus(`최저가 혜택을 위해 열심히 찾는 중..!`, true);
+
+  loadLowestPrice(keyword);
 
   try {
     const CRAWL_PLATFORMS = ['naver', 'kakao', 'ssg', '11st', 'oliveyoung', 'gmarket', 'cjonstyle', 'musinsa', 'ohouse'];
