@@ -802,12 +802,40 @@ function looksLikeBenefit(text) {
   return /[0-9]|%|원|쿠폰|적립|할인|무료|사은품|증정|이벤트|추첨|한정|특가|캐시백|포인트|선착순/.test(text);
 }
 
+// 네이버는 방송마다 "구매인증/댓글/퀴즈 이벤트" 같은 참여형 프로모션을 별도
+// API(v1/promotions)로 관리한다. 브라우저 개발자도구로 실제 요청을 캡처해서
+// 찾아낸 엔드포인트 - 방송 상세(v1/broadcast)에는 이 정보가 전혀 없다.
+// description 텍스트보다 훨씬 구체적이라(이벤트명 + 실제 경품) 우선 사용한다.
+async function fetchNaverPromotions(id) {
+  try {
+    const r = await fetch(`${NAVER_GATEWAY}/v1/promotions?broadcastId=${id}`, { headers: naverHeaders() });
+    if (!r.ok) return [];
+    const data = await r.json();
+    return Array.isArray(data.events) ? data.events : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function promotionEventToText(ev) {
+  const reward = ev.reward?.giveawayName || '';
+  const count = ev.payPersonCount ? `${ev.payPersonCount}명` : '';
+  const rewardPart = reward && count ? `${reward} (${count})` : reward;
+  return [ev.name, rewardPart].filter(Boolean).join(' - ');
+}
+
 async function fetchNaverDetail(id) {
-  const r = await fetch(`${NAVER_GATEWAY}/v1/broadcast/${id}`, { headers: naverHeaders() });
+  const [r, promoEvents] = await Promise.all([
+    fetch(`${NAVER_GATEWAY}/v1/broadcast/${id}`, { headers: naverHeaders() }),
+    fetchNaverPromotions(id),
+  ]);
   if (!r.ok) return null;
   const d = await r.json();
-  const benefits = [];
-  if (d.description && looksLikeBenefit(d.description)) benefits.push(d.description);
+
+  const benefits = promoEvents.slice(0, 5).map(promotionEventToText).filter(Boolean);
+  if (benefits.length === 0 && d.description && looksLikeBenefit(d.description)) {
+    benefits.push(d.description);
+  }
 
   const benefitImages = [];
   let heroImage = d.standByImage || d.previewImage || '';
