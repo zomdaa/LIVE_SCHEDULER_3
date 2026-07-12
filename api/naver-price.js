@@ -1,9 +1,11 @@
-// 네이버 쇼핑 검색 오픈API로 키워드의 인기 모델 3개 최저가를 가져온다.
+// 네이버 쇼핑 검색 오픈API로 키워드의 인기 모델 최저가를 가져온다.
 // https://developers.naver.com/docs/serviceapi/search/shopping/shopping.md
 //
 // 오픈API 자체엔 찜/리뷰수 필드가 없어서 정확히 그 기준으로 정렬은 불가능하다.
 // 대신 정확도순(sort=sim, 네이버 자체 랭킹 - 클릭/구매 등 인기 신호를 반영)으로
-// 받아온 뒤 렌탈/구독 상품을 걸러내고 상위 3개 서로 다른 상품을 뽑는다.
+// 받아온 뒤 렌탈/구독 상품을 걸러내고 서로 다른 상품을 뽑는다.
+// 최대 5개까지 반환하고, 몇 개를 보여줄지(모바일 3 / PC 5)는 프론트에서 정한다.
+const MAX_ITEMS = 5;
 const RENTAL_KEYWORDS = ['렌탈', '렌트', '구독', '멤버십'];
 
 function isRental(title) {
@@ -55,7 +57,7 @@ export default async function handler(req, res) {
         mallName: raw.mallName || '',
         image: raw.image || '',
       });
-      if (items.length >= 3) break;
+      if (items.length >= MAX_ITEMS) break;
     }
 
     if (!items.length) {

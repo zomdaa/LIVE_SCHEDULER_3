@@ -427,6 +427,18 @@ main {
   white-space: nowrap;
 }
 
+@media (min-width: 768px) {
+  .lowest-price-list {
+    overflow-x: visible;
+  }
+  .lowest-price-card {
+    width: calc((100% - 4 * 8px) / 5);
+  }
+  .lowest-price-image { height: 96px; }
+  .lowest-price-name { font-size: 12px; }
+  .lowest-price-value { font-size: 13px; }
+}
+
 .status {
   font-size: 13px;
   color: var(--mute);
@@ -1615,7 +1627,8 @@ async function loadLowestPrice(keyword) {
     const r = await fetch(`/api/naver-price?keyword=${encodeURIComponent(keyword)}`);
     if (!r.ok) return;
     const data = await r.json();
-    const items = data.items || [];
+    const isDesktop = window.matchMedia('(min-width: 768px)').matches;
+    const items = (data.items || []).slice(0, isDesktop ? 5 : 3);
     if (!items.length) return;
 
     listEl.innerHTML = items.map(item => `
