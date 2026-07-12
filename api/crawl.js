@@ -5,7 +5,7 @@ import { kv } from '@vercel/kv';
 // 원래 개별 파일(api/crawl-*.js)이었던 것들을 여기 하나로 합쳤다.
 // 사용법: GET /api/crawl?platform=naver|kakao|ssg|11st|oliveyoung|gmarket&keyword=...
 
-const CACHE_TTL = 300; // 5분
+const CACHE_TTL = 600; // 10분 - 콜드 크롤(캐시 미스) 빈도를 줄여 체감 로딩 속도를 개선
 const MAX_CONCURRENT = 5;
 
 // ---------------------------------------------------------------------------
@@ -126,7 +126,7 @@ async function fetchNaverRaw() {
 // 여기서는 빠진다 (실측 확인함). 반면 /v1/search/broadcast는 네이버 쇼핑라이브
 // 검색창이 쓰는 진짜 검색 API라 빠짐없이 나오고, 2020년대까지의 과거 방송도
 // 함께 나온다. 그래서 키워드가 있는 검색은 캘린더 대신 이 API를 직접 쓴다.
-const NAVER_SEARCH_MAX_PAGES = 5;
+const NAVER_SEARCH_MAX_PAGES = 4; // next 커서가 진짜 순차 의존이라 병렬화가 안 돼 페이지 수 자체를 줄여 지연을 낮춘다
 
 function naverSearchItemToCard(b) {
   return {
