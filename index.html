@@ -376,13 +376,7 @@ main {
   z-index: 1;
 }
 .lowest-price-section.show { display: block; }
-.lowest-price-label {
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--primary-deep);
-  letter-spacing: 0.02em;
-  margin-bottom: 8px;
-}
+.lowest-price-section .section-header { margin-bottom: 10px; }
 .lowest-price-list {
   display: flex;
   gap: 8px;
@@ -479,6 +473,7 @@ main {
 .section-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .dot-upcoming { background: var(--primary); }
 .dot-past { background: #c9b020; }
+.dot-price { background: #03c75a; }
 .section-title {
   font-size: 16px;
   font-weight: 800;
@@ -971,7 +966,10 @@ footer {
   </div>
 
   <div class="lowest-price-section" id="lowestPriceSection">
-    <div class="lowest-price-label">🏷️ 네이버 최저가 · 인기 모델</div>
+    <div class="section-header">
+      <div class="section-dot dot-price"></div>
+      <div class="section-title">지금 네이버 인기템의 최저가에요!</div>
+    </div>
     <div class="lowest-price-list" id="lowestPriceList"></div>
   </div>
 
@@ -1715,7 +1713,7 @@ async function doSearch() {
       .sort((a, b) => String(b.start).localeCompare(String(a.start)));
 
     const total = upcoming.length + past.length;
-    setStatus(total ? `예정 ${upcoming.length}건 · 과거 ${past.length}건 발견` : '검색 결과가 없어요');
+    setStatus(total ? '' : '검색 결과가 없어요');
 
     const priceBtn = document.getElementById('priceBtn');
     priceBtn.href = 'https://alltimeprice.com/search/?search=' + encodeURIComponent(keyword);
