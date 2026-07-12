@@ -1076,9 +1076,11 @@ export default async function handler(req, res) {
     if (cleanKeyword) {
       const kwTerms = cleanKeyword.toLowerCase().split(/\s+/).filter(Boolean);
       upcoming = rawItems.filter(item => {
-        if (!item.title) return false;
-        const title = item.title.toLowerCase();
-        return kwTerms.every(term => title.includes(term));
+        // 올리브영처럼 방송 제목이 브랜드명이 아니라 "7/15 퇴근할게영" 식으로 붙는
+        // 경우가 있어 title만 보면 브랜드명 검색이 안 걸린다 - channel도 같이 본다
+        const haystack = `${item.title || ''} ${item.channel || ''}`.toLowerCase();
+        if (!haystack.trim()) return false;
+        return kwTerms.every(term => haystack.includes(term));
       });
     }
 
