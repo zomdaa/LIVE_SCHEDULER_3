@@ -810,11 +810,20 @@ async function fetchNaverDetail(id) {
   if (d.description && looksLikeBenefit(d.description)) benefits.push(d.description);
 
   const benefitImages = [];
+  let heroImage = d.standByImage || d.previewImage || '';
   if (benefits.length === 0) {
     const bannerUrl = typeof d.broadcastBanner === 'string'
       ? d.broadcastBanner
       : (d.broadcastBanner?.imageUrl || d.broadcastBanner?.url || null);
-    if (bannerUrl) benefitImages.push(bannerUrl);
+    if (bannerUrl) {
+      benefitImages.push(bannerUrl);
+    } else if (heroImage) {
+      // 네이버는 무신사와 달리 혜택 전용 배너가 따로 없고, 대표 이미지(standByImage) 자체에
+      // 혜택 문구가 그려져 있는 경우가 많다 - 상단에 중복으로 두 번 보이지 않게 혜택
+      // 섹션으로만 옮긴다
+      benefitImages.push(heroImage);
+      heroImage = '';
+    }
   }
 
   const products = (d.shoppingProducts || []).map(p => ({
@@ -827,7 +836,7 @@ async function fetchNaverDetail(id) {
   return {
     title: d.title || '',
     channel: d.nickname || '',
-    image: d.standByImage || d.previewImage || '',
+    image: heroImage,
     url: d.broadcastEndUrl || `https://shoppinglive.naver.com/lives/${id}`,
     benefits,
     benefitImages,
