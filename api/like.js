@@ -105,7 +105,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { id, action, title, url, platform, end } = req.body || {};
+    const { id, action, title, url, platform, start, end } = req.body || {};
     if (!id || !['like', 'unlike'].includes(action)) {
       return res.status(400).json({ error: 'id and valid action are required' });
     }
@@ -118,7 +118,7 @@ export default async function handler(req, res) {
         count = await kv.incr(key);
         await kv.sadd('liked-broadcast-ids', id);
         if (title) {
-          await kv.set('like-meta:' + id, { title, url: url || '', platform: platform || '', end: end || '' });
+          await kv.set('like-meta:' + id, { title, url: url || '', platform: platform || '', start: start || '', end: end || '' });
         }
       } else {
         count = await kv.decr(key);
