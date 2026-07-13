@@ -664,6 +664,16 @@ body { padding-bottom: 64px; }
 
 .vline { width: 1px; align-self: stretch; flex-shrink: 0; opacity: 0.2; background: currentColor; }
 
+.card-thumb {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  object-fit: cover;
+  background: rgba(255,255,255,0.4);
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
 .info { flex: 1; min-width: 0; }
 .platform {
   display: inline-block;
@@ -686,6 +696,15 @@ body { padding-bottom: 64px; }
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.channel {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.75;
+  margin-top: 3px;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -1854,6 +1873,8 @@ function upcomingCard(item, idx) {
         <span class="like-count">0</span>
       </button>` : '';
 
+  const thumbHtml = item.image ? `<img class="card-thumb" src="${escapeAttr(item.image)}" alt="" loading="lazy" />` : '';
+
   return `
     <a class="card ${urgency}" href="${item.url || '#'}" target="_blank" rel="noopener" onclick="return handleCardClick(event, ${idx})">
       <div class="date-col">
@@ -1862,9 +1883,11 @@ function upcomingCard(item, idx) {
         <div class="date-time">${dt.time}</div>
       </div>
       <div class="vline"></div>
+      ${thumbHtml}
       <div class="info">
         <span class="platform">${item.platform || '라이브'}</span>
         <div class="title">${item.title}</div>
+        ${item.channel ? `<div class="channel">${escapeAttr(item.channel)}</div>` : ''}
       </div>
       ${likeHtml}
     </a>`;
