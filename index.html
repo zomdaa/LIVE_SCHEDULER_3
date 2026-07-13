@@ -1457,22 +1457,29 @@ async function loadMyPage() {
   try {
     const r = await fetch('/api/like?ids=' + encodeURIComponent(likedIds.join(',')) + '&meta=true');
     const data = await r.json();
-    const items = likedIds.map(id => data.meta?.[id]).filter(Boolean);
+    const now = new Date();
+    const items = likedIds.map(id => data.meta?.[id]).filter(Boolean).filter(item => {
+      // 종료된 방송은 찜 목록에서 자동으로 빠진다. end가 없는 옛날 기록은
+      // start+2시간을 종료 시점으로 추정한다 (알림 정리 로직과 동일한 기준)
+      const start = parseLabangDate(item.start);
+      const end = parseLabangDate(item.end) || (start ? new Date(start.getTime() + 2 * 60 * 60 * 1000) : null);
+      return !end || end >= now;
+    });
     likeCountEl.textContent = items.length ? `${items.length}건` : '';
     if (!items.length) {
-      likeListEl.innerHTML = '<div class="empty">찜한 방송 정보를 불러오지 못했어요</div>';
+      likeListEl.innerHTML = '<div class="empty">찜한 방송이 없어요</div>';
       return;
     }
     likeListEl.innerHTML = `<div class="cards">${items.map(item => {
-      // 옛날에 찜한 항목은 start가 저장되기 전이라 없을 수 있어 end로 대체
-      const d = parseLabangDate(item.start || item.end);
-      const dt = fmtDate(d);
-      const days = daysFromNow(d);
-      const isEnded = d ? d < new Date() : false;
-      const dDayLabel = !d ? '찜' : isEnded ? '종료' : days === 0 ? '오늘' : days === 1 ? '내일' : `D-${days}`;
+      const start = parseLabangDate(item.start || item.end);
+      const dt = fmtDate(start);
+      const days = daysFromNow(start);
+      const isLive = start ? start <= now : false;
+      const urgency = start ? urgencyClass(isLive, false, days) : 'urgency-4';
+      const dDayLabel = !start ? '찜' : isLive ? '● LIVE' : days === 0 ? '오늘' : days === 1 ? '내일' : `D-${days}`;
       const likeId = item.id || '';
       return `
-      <a class="card past" href="${escapeAttr(item.url || '#')}" target="_blank" rel="noopener">
+      <a class="card ${urgency}" href="${escapeAttr(item.url || '#')}" target="_blank" rel="noopener">
         <div class="date-col">
           <div class="date-month">${dDayLabel}</div>
           <div class="date-day">${dt.month}/${dt.day}</div>
@@ -1484,18 +1491,30 @@ async function loadMyPage() {
           <div class="title">${escapeAttr(item.title || '')}</div>
         </div>
         ${likeId ? `
-        <div class="like-btn liked-readonly" data-like-id="${likeId}">
+        <button class="like-btn liked" data-like-id="${likeId}" data-title="${escapeAttr(item.title)}" data-url="${escapeAttr(item.url)}" data-platform="${escapeAttr(item.platform)}" data-start="${escapeAttr(item.start)}" data-end="${escapeAttr(item.end)}" onclick="unlikeFromMyPage(event, '${likeId}')">
           <svg class="heart-icon" width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 20.5C12 20.5 3 15 3 8.8C3 5.7 5.4 3.5 8.2 3.5C9.8 3.5 11.2 4.3 12 5.6C12.8 4.3 14.2 3.5 15.8 3.5C18.6 3.5 21 5.7 21 8.8C21 15 12 20.5 12 20.5Z" stroke="currentColor" stroke-width="1.8"/>
           </svg>
           <span class="like-count">0</span>
-        </div>` : ''}
+        </button>` : ''}
       </a>`;
     }).join('')}</div>`;
     loadLikeCounts();
   } catch (e) {
     likeListEl.innerHTML = '<div class="empty">불러오지 못했어요</div>';
   }
+}
+
+// MY 페이지 찜 목록에서 하트를 다시 누르면 그 자리에서 바로 찜 해제
+async function unlikeFromMyPage(evt, id) {
+  const card = evt.currentTarget.closest('.card');
+  await toggleLike(evt, id);
+  if (card) card.remove();
+  const likeListEl = document.getElementById('myLikeList');
+  const likeCountEl = document.getElementById('myLikeCount');
+  const remaining = likeListEl.querySelectorAll('.card').length;
+  likeCountEl.textContent = remaining ? `${remaining}건` : '';
+  if (!remaining) likeListEl.innerHTML = '<div class="empty">찜한 방송이 없어요</div>';
 }
 
 const verdictText = document.getElementById('verdictText');
@@ -1821,22 +1840,34 @@ function isStandalonePWA() {
   return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
 }
 
+function isChromeIOS() {
+  return /CriOS/.test(navigator.userAgent || '');
+}
+
+// iOS는 다른 앱이 x-safari-https: 스킴을 열면 그 주소를 사파리로 넘겨준다 -
+// 크롬iOS 안에서도 이걸 이용하면 "사파리에서 열기" 버튼을 만들 수 있다
+function openInSafari() {
+  window.location.href = 'x-safari-https://' + location.host + location.pathname + location.search;
+}
+
 function showIOSInstallGuide() {
   const overlay = document.getElementById('detailModalOverlay');
   const body = document.getElementById('detailModalBody');
+  const inChrome = isChromeIOS();
   body.innerHTML = `
     <div class="modal-section-title">📲 아이폰에서 알림 받으려면</div>
     <div style="padding: 4px 4px 16px; line-height:1.7; font-size:14px; color: var(--charcoal);">
       iOS는 <b>사파리로 홈 화면에 설치된 앱</b>에서만 알림을 허용해요. 지금 브라우저로는 알림을 켤 수 없어요.
     </div>
+    ${inChrome ? `<button class="modal-btn modal-btn-watch" onclick="openInSafari()" style="margin-bottom:16px;">🧭 사파리에서 열기</button>` : ''}
     <ol style="padding-left:20px; display:flex; flex-direction:column; gap:10px; font-size:14px; line-height:1.5; margin-bottom:20px;">
-      <li><b>사파리</b> 앱으로 이 사이트를 열어주세요 (크롬 아님)</li>
+      ${inChrome ? '' : '<li><b>사파리</b> 앱으로 이 사이트를 열어주세요</li>'}
       <li>하단 공유 버튼(⬆️)을 탭하세요</li>
       <li><b>"홈 화면에 추가"</b>를 선택하세요</li>
       <li>홈 화면에 생긴 아이콘으로 앱을 실행하세요</li>
       <li>거기서 다시 알림을 켜주세요</li>
     </ol>
-    <button class="modal-btn modal-btn-watch" onclick="closeDetailModal()">확인했어요</button>
+    <button class="modal-btn" onclick="closeDetailModal()">${inChrome ? '나중에 할게요' : '확인했어요'}</button>
   `;
   overlay.classList.add('show');
   document.body.style.overflow = 'hidden';
