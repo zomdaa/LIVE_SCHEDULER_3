@@ -1173,6 +1173,14 @@ footer {
       </div>
       <div id="myLikeList"><div class="empty">찜한 방송이 없어요</div></div>
     </div>
+    <div class="section">
+      <div class="section-header">
+        <div class="section-dot dot-upcoming"></div>
+        <div class="section-title">알림 테스트</div>
+      </div>
+      <button class="modal-btn modal-btn-notify" id="testPushBtn" onclick="sendTestPush(event)">🔔 테스트 알림 보내기</button>
+      <div class="tab-page-sub" id="testPushStatus" style="margin-top:8px;"></div>
+    </div>
   </main>
 </div>
 
@@ -1797,6 +1805,50 @@ async function ensurePushSubscription() {
     return sub;
   } catch (e) {
     return null;
+  }
+}
+
+// F12/개발자도구 없이도 웹푸시 파이프라인(구독→예약→외부 크론→발송→SW 알림)이
+// 실제로 도는지 확인할 수 있게 만든 자가 테스트 버튼
+async function sendTestPush(evt) {
+  const btn = evt.currentTarget;
+  const statusEl = document.getElementById('testPushStatus');
+  btn.disabled = true;
+  statusEl.textContent = '준비 중...';
+  try {
+    if (!('Notification' in window)) {
+      statusEl.textContent = '이 브라우저는 알림을 지원하지 않아요.';
+      return;
+    }
+    let permission = Notification.permission;
+    if (permission === 'default') permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      statusEl.textContent = '알림 권한이 꺼져 있어요. 브라우저 설정에서 허용해주세요.';
+      return;
+    }
+    const sub = await ensurePushSubscription();
+    if (!sub) {
+      statusEl.textContent = '이 브라우저/환경에서는 푸시 구독을 만들 수 없어요. (iOS는 홈 화면에 추가한 앱에서만 가능해요)';
+      return;
+    }
+    const startAt = Date.now() + 60 * 1000;
+    const r = await fetch('/api/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'schedule',
+        subscription: sub.toJSON(),
+        broadcast: { id: 'test-push-' + Date.now(), title: '테스트 알림이에요! 이게 보이면 정상 작동이에요', url: location.href, platform: 'BUY NOW OR LIVE', startAt },
+      }),
+    });
+    const data = await r.json();
+    statusEl.textContent = data.ok
+      ? '예약 완료! 최대 2~3분 안에 알림이 와야 해요. 탭을 닫아두셔도 돼요.'
+      : '예약 실패: ' + (data.error || '알 수 없는 오류');
+  } catch (e) {
+    statusEl.textContent = '오류가 발생했어요: ' + e.message;
+  } finally {
+    btn.disabled = false;
   }
 }
 
