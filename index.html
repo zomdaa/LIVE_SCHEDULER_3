@@ -208,6 +208,39 @@ body { padding-bottom: 64px; }
   font-weight: 600;
 }
 
+.calendar-date-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 2px 10px;
+  margin-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+.calendar-date-tabs::-webkit-scrollbar { display: none; }
+.calendar-date-tab {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 44px;
+  padding: 8px 0 7px;
+  border: 1.5px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  font-family: inherit;
+}
+.calendar-date-tab.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+.cdt-dow { font-size: 11px; font-weight: 700; opacity: 0.75; }
+.cdt-day { font-size: 15px; font-weight: 800; }
+.cdt-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+
 .calendar-day-header {
   font-size: 13px;
   font-weight: 800;
@@ -1264,6 +1297,12 @@ function switchView(view) {
   if (view === 'mypage') loadMyPage();
 }
 
+function calendarDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+let calendarSelectedDate = null;
+
 async function loadCalendar() {
   const el = document.getElementById('calendarResult');
   el.innerHTML = '<div class="empty">불러오는 중...</div>';
@@ -1287,32 +1326,76 @@ async function loadCalendar() {
 
     window.__upcomingItems = items;
 
-    if (!items.length) {
-      el.innerHTML = '<div class="empty">앞으로 7일간 예정된 방송이 없어요</div>';
-      return;
-    }
-
-    const groups = [];
+    const byDate = {};
     items.forEach((item, idx) => {
       const d = parseLabangDate(item.start);
-      const days = daysFromNow(d);
-      const label = days === 0 ? '오늘' : days === 1 ? '내일' : `${d.getMonth() + 1}/${d.getDate()}`;
-      let group = groups[groups.length - 1];
-      if (!group || group.label !== label) {
-        group = { label, entries: [] };
-        groups.push(group);
-      }
-      group.entries.push({ item, idx });
+      const key = calendarDateKey(d);
+      (byDate[key] = byDate[key] || []).push({ item, idx });
     });
+    window.__calendarByDate = byDate;
 
-    el.innerHTML = groups.map(g => `
-      <div class="calendar-day-header">${g.label}</div>
-      <div class="cards">${g.entries.map(e => upcomingCard(e.item, e.idx)).join('')}</div>
-    `).join('');
+    const days = [];
+    for (let i = 0; i <= 7; i++) {
+      days.push(new Date(now.getFullYear(), now.getMonth(), now.getDate() + i));
+    }
+    window.__calendarDays = days;
+
+    if (!calendarSelectedDate || !days.some(d => calendarDateKey(d) === calendarSelectedDate)) {
+      // 오늘 방송이 없으면 방송이 있는 가장 가까운 날짜를 기본 선택
+      const firstWithItems = days.find(d => (byDate[calendarDateKey(d)] || []).length > 0);
+      calendarSelectedDate = calendarDateKey(firstWithItems || days[0]);
+    }
+
+    renderCalendarView();
     loadLikeCounts();
   } catch (e) {
     el.innerHTML = '<div class="empty">불러오지 못했어요</div>';
   }
+}
+
+function selectCalendarDate(key) {
+  calendarSelectedDate = key;
+  renderCalendarView();
+}
+
+function renderCalendarView() {
+  const el = document.getElementById('calendarResult');
+  const days = window.__calendarDays || [];
+  const byDate = window.__calendarByDate || {};
+  if (!days.length) {
+    el.innerHTML = '<div class="empty">앞으로 7일간 예정된 방송이 없어요</div>';
+    return;
+  }
+
+  const now = new Date();
+  const todayKey = calendarDateKey(now);
+  const dowLabels = ['일', '월', '화', '수', '목', '금', '토'];
+
+  const tabsHtml = days.map(d => {
+    const key = calendarDateKey(d);
+    const count = (byDate[key] || []).length;
+    const active = key === calendarSelectedDate;
+    return `
+      <button class="calendar-date-tab ${active ? 'active' : ''}" onclick="selectCalendarDate('${key}')">
+        <span class="cdt-dow">${key === todayKey ? '오늘' : dowLabels[d.getDay()]}</span>
+        <span class="cdt-day">${d.getDate()}</span>
+        <span class="cdt-dot" style="visibility:${count ? 'visible' : 'hidden'}"></span>
+      </button>`;
+  }).join('');
+
+  const selectedDay = days.find(d => calendarDateKey(d) === calendarSelectedDate);
+  const headerLabel = selectedDay
+    ? `${calendarDateKey(selectedDay) === todayKey ? '오늘 · ' : ''}${selectedDay.getMonth() + 1}월 ${selectedDay.getDate()}일 (${dowLabels[selectedDay.getDay()]})`
+    : '';
+  const entries = byDate[calendarSelectedDate] || [];
+  const listHtml = entries.length
+    ? `<div class="cards">${entries.map(e => upcomingCard(e.item, e.idx)).join('')}</div>`
+    : `<div class="empty">이 날은 예정된 방송이 없어요</div>`;
+
+  el.innerHTML = `
+    <div class="calendar-date-tabs">${tabsHtml}</div>
+    <div class="calendar-day-header">${headerLabel}</div>
+    ${listHtml}`;
 }
 
 async function loadMyPage() {
