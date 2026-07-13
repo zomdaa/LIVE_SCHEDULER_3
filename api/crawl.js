@@ -42,7 +42,6 @@ function naverToCard(entry) {
     end: b.expectedEndDate || b.endDate || null,
     status: b.status,
     url: b.endUrl || ('https://shoppinglive.naver.com/lives/' + b.id),
-    image: b.standByImage || b.previewImage || '',
   };
 }
 
@@ -139,7 +138,6 @@ function naverSearchItemToCard(b) {
     end: b.expectedEndDate || b.endDate || null,
     status: b.status,
     url: b.broadcastEndUrl || ('https://shoppinglive.naver.com/lives/' + b.id),
-    image: b.standByImage || b.previewImage || '',
   };
 }
 
@@ -221,7 +219,6 @@ function kakaoToCard(item) {
     end: null,
     status: item.liveStatus,
     url: item.landingUrl || ('https://shoppinglive.kakao.com/live/' + item.liveContentId),
-    image: item.coverImageUrl || item.imageUrl || '',
   };
 }
 
@@ -412,7 +409,6 @@ function st11ToCard(item, kstDate) {
     end: null,
     status: item.liveStatus || '',
     url: item.liveDetailsUrl ? item.liveDetailsUrl.replace(/^http:/, 'https:') : '',
-    image: item.imageUrl || '',
   };
 }
 

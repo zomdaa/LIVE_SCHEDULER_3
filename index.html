@@ -664,16 +664,6 @@ body { padding-bottom: 64px; }
 
 .vline { width: 1px; align-self: stretch; flex-shrink: 0; opacity: 0.2; background: currentColor; }
 
-.card-thumb {
-  width: 48px;
-  height: 48px;
-  flex-shrink: 0;
-  border-radius: 10px;
-  object-fit: cover;
-  background: rgba(255,255,255,0.4);
-  border: 1px solid rgba(0,0,0,0.08);
-}
-
 .info { flex: 1; min-width: 0; }
 .platform {
   display: inline-block;
@@ -1860,7 +1850,16 @@ function upcomingCard(item, idx) {
   } else if (isLive) {
     dDayLabel = '● LIVE';
   } else if (days === 0) {
-    dDayLabel = '오늘';
+    // 오늘 방송은 "오늘"보다 "3시간 후"처럼 임박도를 바로 알 수 있는 게
+    // 유용해서 시작까지 남은 시간을 직접 카운트다운으로 보여준다
+    const diffMs = start ? start - now : null;
+    if (diffMs === null || diffMs <= 0) {
+      dDayLabel = '오늘';
+    } else if (diffMs < 60 * 60 * 1000) {
+      dDayLabel = `${Math.max(1, Math.round(diffMs / 60000))}분 후`;
+    } else {
+      dDayLabel = `${Math.floor(diffMs / (60 * 60 * 1000))}시간 후`;
+    }
   } else {
     dDayLabel = `D-${days}`;
   }
@@ -1873,8 +1872,6 @@ function upcomingCard(item, idx) {
         <span class="like-count">0</span>
       </button>` : '';
 
-  const thumbHtml = item.image ? `<img class="card-thumb" src="${escapeAttr(item.image)}" alt="" loading="lazy" />` : '';
-
   return `
     <a class="card ${urgency}" href="${item.url || '#'}" target="_blank" rel="noopener" onclick="return handleCardClick(event, ${idx})">
       <div class="date-col">
@@ -1883,7 +1880,6 @@ function upcomingCard(item, idx) {
         <div class="date-time">${dt.time}</div>
       </div>
       <div class="vline"></div>
-      ${thumbHtml}
       <div class="info">
         <span class="platform">${item.platform || '라이브'}</span>
         <div class="title">${item.title}</div>
