@@ -1808,11 +1808,49 @@ async function ensurePushSubscription() {
   }
 }
 
+// iOS는 사파리로 홈 화면에 설치된 상태(standalone)에서만 Notification/Push API가
+// 존재한다 - 크롬iOS도 내부적으로 사파리 엔진이라 똑같이 막혀 있다
+function isIOSDevice() {
+  const ua = navigator.userAgent || '';
+  if (/iPad|iPhone|iPod/.test(ua)) return true;
+  // iPadOS는 데스크탑 UA를 보내는 경우가 많아 멀티터치 Mac으로 우회 감지
+  return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+}
+
+function isStandalonePWA() {
+  return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+}
+
+function showIOSInstallGuide() {
+  const overlay = document.getElementById('detailModalOverlay');
+  const body = document.getElementById('detailModalBody');
+  body.innerHTML = `
+    <div class="modal-section-title">📲 아이폰에서 알림 받으려면</div>
+    <div style="padding: 4px 4px 16px; line-height:1.7; font-size:14px; color: var(--charcoal);">
+      iOS는 <b>사파리로 홈 화면에 설치된 앱</b>에서만 알림을 허용해요. 지금 브라우저로는 알림을 켤 수 없어요.
+    </div>
+    <ol style="padding-left:20px; display:flex; flex-direction:column; gap:10px; font-size:14px; line-height:1.5; margin-bottom:20px;">
+      <li><b>사파리</b> 앱으로 이 사이트를 열어주세요 (크롬 아님)</li>
+      <li>하단 공유 버튼(⬆️)을 탭하세요</li>
+      <li><b>"홈 화면에 추가"</b>를 선택하세요</li>
+      <li>홈 화면에 생긴 아이콘으로 앱을 실행하세요</li>
+      <li>거기서 다시 알림을 켜주세요</li>
+    </ol>
+    <button class="modal-btn modal-btn-watch" onclick="closeDetailModal()">확인했어요</button>
+  `;
+  overlay.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
 // F12/개발자도구 없이도 웹푸시 파이프라인(구독→예약→외부 크론→발송→SW 알림)이
 // 실제로 도는지 확인할 수 있게 만든 자가 테스트 버튼
 async function sendTestPush(evt) {
   const btn = evt.currentTarget;
   const statusEl = document.getElementById('testPushStatus');
+  if (isIOSDevice() && !isStandalonePWA()) {
+    showIOSInstallGuide();
+    return;
+  }
   btn.disabled = true;
   statusEl.textContent = '준비 중...';
   try {
@@ -1879,6 +1917,10 @@ async function toggleReminder(evt, id) {
     return;
   }
 
+  if (isIOSDevice() && !isStandalonePWA()) {
+    showIOSInstallGuide();
+    return;
+  }
   if (!('Notification' in window)) {
     alert('이 브라우저는 알림 기능을 지원하지 않아요.');
     return;
