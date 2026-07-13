@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BUY NOW OR LIVE</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 160 100%22><text y=%22.8em%22 font-size=%2280%22>🛑🎥</text></svg>" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+<meta name="theme-color" content="#ea2804" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="BUY NOW OR LIVE" />
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 <style>
@@ -148,6 +155,65 @@ main {
   padding: 0 1.5rem 4rem;
   position: relative;
 }
+
+body { padding-bottom: 64px; }
+
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  background: var(--card);
+  border-top: 1.5px solid #1a1814;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 0 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ash);
+  font-family: inherit;
+}
+.bottom-nav-icon { width: 20px; height: 20px; fill: currentColor; opacity: 0.55; }
+.bottom-nav-label { font-size: 11px; font-weight: 700; }
+.bottom-nav-item.active { color: var(--primary-deep); }
+.bottom-nav-item.active .bottom-nav-icon { opacity: 1; }
+
+.tab-page-header {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 0.5rem;
+}
+.tab-page-title {
+  font-family: 'JejuStoneWall', 'Pretendard', sans-serif;
+  font-size: 22px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.tab-page-sub {
+  font-size: 13px;
+  color: var(--mute);
+  font-weight: 600;
+}
+
+.calendar-day-header {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--charcoal);
+  margin: 20px 0 10px;
+  padding: 0 4px;
+}
+.calendar-day-header:first-child { margin-top: 4px; }
 
 .hot-rank {
   background: var(--card);
@@ -943,6 +1009,7 @@ footer {
 </head>
 <body>
 
+<div id="view-home">
 <div class="hero-band">
   <div class="hero-content">
   <div class="eyebrow"><span class="dot"></span><span id="todayDate"></span></div>
@@ -1014,6 +1081,80 @@ footer {
     <div class="empty">🔍 브랜드명을 검색하면<br>예정 방송과 과거 방송을 함께 보여드려요</div>
   </div>
 </main>
+</div>
+
+<div id="view-calendar" style="display:none">
+  <div class="tab-page-header">
+    <div class="tab-page-title">📅 캘린더</div>
+    <div class="tab-page-sub">오늘부터 7일간 예정된 전체 방송이에요</div>
+  </div>
+  <main>
+    <div id="calendarResult"><div class="empty">불러오는 중...</div></div>
+  </main>
+</div>
+
+<div id="view-mypage" style="display:none">
+  <div class="tab-page-header">
+    <div class="tab-page-title">🙋 마이</div>
+    <div class="tab-page-sub">알림 설정 · 찜한 방송을 모아봐요</div>
+  </div>
+  <main>
+    <div class="section">
+      <div class="section-header">
+        <div class="section-dot dot-upcoming"></div>
+        <div class="section-title">알림 설정한 방송</div>
+        <div class="section-count" id="myReminderCount"></div>
+      </div>
+      <div id="myReminderList"><div class="empty">알림 설정한 방송이 없어요</div></div>
+    </div>
+    <div class="section">
+      <div class="section-header">
+        <div class="section-dot dot-past"></div>
+        <div class="section-title">찜한 방송</div>
+        <div class="section-count" id="myLikeCount"></div>
+      </div>
+      <div id="myLikeList"><div class="empty">찜한 방송이 없어요</div></div>
+    </div>
+  </main>
+</div>
+
+<nav class="bottom-nav">
+  <button class="bottom-nav-item active" data-view="home" onclick="switchView('home')">
+    <svg class="bottom-nav-icon" viewBox="0 0 8 8" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="0" width="2" height="1"/><rect x="2" y="1" width="4" height="1"/>
+      <rect x="1" y="2" width="6" height="1"/><rect x="0" y="3" width="8" height="1"/>
+      <rect x="0" y="4" width="2" height="1"/><rect x="6" y="4" width="2" height="1"/>
+      <rect x="0" y="5" width="2" height="1"/><rect x="3" y="5" width="2" height="1"/><rect x="6" y="5" width="2" height="1"/>
+      <rect x="0" y="6" width="2" height="1"/><rect x="3" y="6" width="2" height="1"/><rect x="6" y="6" width="2" height="1"/>
+      <rect x="0" y="7" width="8" height="1"/>
+    </svg>
+    <span class="bottom-nav-label">홈</span>
+  </button>
+  <button class="bottom-nav-item" data-view="calendar" onclick="switchView('calendar')">
+    <svg class="bottom-nav-icon" viewBox="0 0 8 8" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="0" width="8" height="1"/>
+      <rect x="0" y="1" width="1" height="1"/><rect x="7" y="1" width="1" height="1"/>
+      <rect x="0" y="2" width="8" height="1"/>
+      <rect x="0" y="3" width="1" height="1"/><rect x="2" y="3" width="1" height="1"/><rect x="4" y="3" width="1" height="1"/><rect x="6" y="3" width="2" height="1"/>
+      <rect x="0" y="4" width="2" height="1"/><rect x="3" y="4" width="1" height="1"/><rect x="5" y="4" width="1" height="1"/><rect x="7" y="4" width="1" height="1"/>
+      <rect x="0" y="5" width="1" height="1"/><rect x="2" y="5" width="1" height="1"/><rect x="4" y="5" width="1" height="1"/><rect x="6" y="5" width="2" height="1"/>
+      <rect x="0" y="6" width="2" height="1"/><rect x="3" y="6" width="1" height="1"/><rect x="5" y="6" width="1" height="1"/><rect x="7" y="6" width="1" height="1"/>
+      <rect x="0" y="7" width="8" height="1"/>
+    </svg>
+    <span class="bottom-nav-label">캘린더</span>
+  </button>
+  <button class="bottom-nav-item" data-view="mypage" onclick="switchView('mypage')">
+    <svg class="bottom-nav-icon" viewBox="0 0 8 8" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="0" width="4" height="1"/><rect x="1" y="1" width="6" height="1"/>
+      <rect x="1" y="2" width="6" height="1"/><rect x="2" y="3" width="4" height="1"/>
+      <rect x="0" y="4" width="1" height="1"/><rect x="7" y="4" width="1" height="1"/>
+      <rect x="0" y="5" width="2" height="1"/><rect x="6" y="5" width="2" height="1"/>
+      <rect x="0" y="6" width="3" height="1"/><rect x="5" y="6" width="3" height="1"/>
+      <rect x="0" y="7" width="8" height="1"/>
+    </svg>
+    <span class="bottom-nav-label">마이</span>
+  </button>
+</nav>
 
 <div class="modal-overlay" id="detailModalOverlay" onclick="if (event.target === this) closeDetailModal()">
   <div class="modal-sheet" id="detailModalSheet">
@@ -1023,6 +1164,12 @@ footer {
 </div>
 
 <script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
 document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('keydown', e => {
   const blockedKeys = ['F12'];
@@ -1070,6 +1217,8 @@ async function loadHotRank() {
 
 loadHotRank();
 
+const CRAWL_PLATFORMS = ['naver', 'kakao', 'ssg', '11st', 'oliveyoung', 'gmarket', 'cjonstyle', 'musinsa', 'ohouse'];
+
 const input = document.getElementById('input');
 const btn = document.getElementById('btn');
 const statusEl = document.getElementById('status');
@@ -1077,6 +1226,7 @@ const resultEl = document.getElementById('result');
 const verdictEl = document.getElementById('verdict');
 
 function goHome() {
+  switchView('home');
   input.value = '';
   statusEl.innerHTML = '';
   verdictEl.classList.remove('show');
@@ -1087,6 +1237,130 @@ function goHome() {
   document.getElementById('lowestPriceSection').classList.remove('show');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+function switchView(view) {
+  ['home', 'calendar', 'mypage'].forEach(v => {
+    document.getElementById('view-' + v).style.display = v === view ? '' : 'none';
+  });
+  document.querySelectorAll('.bottom-nav-item').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === view);
+  });
+  window.scrollTo({ top: 0 });
+  if (view === 'calendar') loadCalendar();
+  if (view === 'mypage') loadMyPage();
+}
+
+async function loadCalendar() {
+  const el = document.getElementById('calendarResult');
+  el.innerHTML = '<div class="empty">불러오는 중...</div>';
+  try {
+    const results = await Promise.all(CRAWL_PLATFORMS.map(p =>
+      fetch(`/api/crawl?platform=${p}`)
+        .then(r => r.ok ? r.json() : { upcoming: [] })
+        .catch(() => ({ upcoming: [] }))
+    ));
+    const now = new Date();
+    const cutoff = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    let items = results.flatMap((r, i) =>
+      (r.upcoming || []).map(item => ({ ...item, platformKey: CRAWL_PLATFORMS[i] }))
+    );
+    items = items
+      .map(item => ({ item, start: parseLabangDate(item.start) }))
+      .filter(x => x.start && x.start >= now && x.start <= cutoff)
+      .sort((a, b) => a.start - b.start)
+      .map(x => x.item);
+
+    window.__upcomingItems = items;
+
+    if (!items.length) {
+      el.innerHTML = '<div class="empty">앞으로 7일간 예정된 방송이 없어요</div>';
+      return;
+    }
+
+    const groups = [];
+    items.forEach((item, idx) => {
+      const d = parseLabangDate(item.start);
+      const days = daysFromNow(d);
+      const label = days === 0 ? '오늘' : days === 1 ? '내일' : `${d.getMonth() + 1}/${d.getDate()}`;
+      let group = groups[groups.length - 1];
+      if (!group || group.label !== label) {
+        group = { label, entries: [] };
+        groups.push(group);
+      }
+      group.entries.push({ item, idx });
+    });
+
+    el.innerHTML = groups.map(g => `
+      <div class="calendar-day-header">${g.label}</div>
+      <div class="cards">${g.entries.map(e => upcomingCard(e.item, e.idx)).join('')}</div>
+    `).join('');
+    loadLikeCounts();
+  } catch (e) {
+    el.innerHTML = '<div class="empty">불러오지 못했어요</div>';
+  }
+}
+
+async function loadMyPage() {
+  const reminders = getReminders()
+    .filter(r => r.startAt && r.startAt > Date.now())
+    .sort((a, b) => a.startAt - b.startAt);
+  const reminderListEl = document.getElementById('myReminderList');
+  const reminderCountEl = document.getElementById('myReminderCount');
+  reminderCountEl.textContent = reminders.length ? `${reminders.length}건` : '';
+  if (reminders.length) {
+    reminderListEl.innerHTML = `<div class="cards">${reminders.map(r => {
+      const dt = fmtDate(new Date(r.startAt));
+      return `
+      <a class="card urgency-3" href="${escapeAttr(r.url || '#')}" target="_blank" rel="noopener">
+        <div class="date-col">
+          <div class="date-month">🔔</div>
+          <div class="date-day">${dt.month}/${dt.day}</div>
+          <div class="date-time">${dt.time}</div>
+        </div>
+        <div class="vline"></div>
+        <div class="info">
+          <span class="platform">${escapeAttr(r.platform || '')}</span>
+          <div class="title">${escapeAttr(r.title || '')}</div>
+        </div>
+      </a>`;
+    }).join('')}</div>`;
+  } else {
+    reminderListEl.innerHTML = '<div class="empty">알림 설정한 방송이 없어요</div>';
+  }
+
+  const likedIds = [...getLikedSet()];
+  const likeListEl = document.getElementById('myLikeList');
+  const likeCountEl = document.getElementById('myLikeCount');
+  if (!likedIds.length) {
+    likeCountEl.textContent = '';
+    likeListEl.innerHTML = '<div class="empty">찜한 방송이 없어요</div>';
+    return;
+  }
+  likeListEl.innerHTML = '<div class="empty">불러오는 중...</div>';
+  try {
+    const r = await fetch('/api/like?ids=' + encodeURIComponent(likedIds.join(',')) + '&meta=true');
+    const data = await r.json();
+    const items = likedIds.map(id => data.meta?.[id]).filter(Boolean);
+    likeCountEl.textContent = items.length ? `${items.length}건` : '';
+    if (!items.length) {
+      likeListEl.innerHTML = '<div class="empty">찜한 방송 정보를 불러오지 못했어요</div>';
+      return;
+    }
+    likeListEl.innerHTML = `<div class="cards">${items.map(item => `
+      <a class="card past" href="${escapeAttr(item.url || '#')}" target="_blank" rel="noopener">
+        <div class="date-col"><div class="date-month">❤️</div></div>
+        <div class="vline"></div>
+        <div class="info">
+          <span class="platform">${escapeAttr(item.platform || '')}</span>
+          <div class="title">${escapeAttr(item.title || '')}</div>
+        </div>
+      </a>`).join('')}</div>`;
+  } catch (e) {
+    likeListEl.innerHTML = '<div class="empty">불러오지 못했어요</div>';
+  }
+}
+
 const verdictText = document.getElementById('verdictText');
 const verdictTitle = document.getElementById('verdictTitle');
 
@@ -1722,7 +1996,6 @@ async function doSearch() {
   loadLowestPrice(keyword);
 
   try {
-    const CRAWL_PLATFORMS = ['naver', 'kakao', 'ssg', '11st', 'oliveyoung', 'gmarket', 'cjonstyle', 'musinsa', 'ohouse'];
     const [crawlResults, searchRes] = await Promise.all([
       Promise.all(CRAWL_PLATFORMS.map(p =>
         fetch(`/api/crawl?platform=${p}&keyword=${encodeURIComponent(keyword)}`)

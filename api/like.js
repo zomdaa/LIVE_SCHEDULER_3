@@ -85,14 +85,20 @@ export default async function handler(req, res) {
 
     if (!ids) return res.status(400).json({ error: 'ids is required' });
     const idList = String(ids).split(',').filter(Boolean).slice(0, 50);
+    const wantMeta = req.query.meta;
 
     try {
       const counts = {};
+      const meta = {};
       await Promise.all(idList.map(async (id) => {
         const val = await kv.get('like-count:' + id);
         counts[id] = typeof val === 'number' ? val : 0;
+        if (wantMeta) {
+          const m = await kv.get('like-meta:' + id);
+          if (m) meta[id] = { ...m, id };
+        }
       }));
-      return res.status(200).json({ counts });
+      return res.status(200).json(wantMeta ? { counts, meta } : { counts });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
