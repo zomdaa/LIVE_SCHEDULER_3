@@ -165,7 +165,9 @@ body { padding-bottom: 64px; }
   bottom: 0;
   z-index: 50;
   display: flex;
-  background: var(--card);
+  background: rgba(255,255,255,0.62);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-top: 1.5px solid #1a1814;
   box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
   padding-bottom: env(safe-area-inset-bottom, 0);
@@ -802,8 +804,9 @@ footer {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(20,18,14,0.55);
-  backdrop-filter: blur(2px);
+  background: rgba(20,18,14,0.4);
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
   align-items: flex-end;
   justify-content: center;
   padding: 0;
@@ -819,7 +822,9 @@ footer {
   max-width: 460px;
   max-height: 88vh;
   overflow-y: auto;
-  background: var(--canvas);
+  background: rgba(249,247,243,0.78);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1.5px solid #1a1814;
   box-shadow: 4px 4px 0 #1a1814;
   border-radius: 20px 20px 0 0;
