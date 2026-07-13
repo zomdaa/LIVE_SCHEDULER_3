@@ -1857,17 +1857,17 @@ function showIOSInstallGuide() {
   body.innerHTML = `
     <div class="modal-section-title">📲 아이폰에서 알림 받으려면</div>
     <div style="padding: 4px 4px 16px; line-height:1.7; font-size:14px; color: var(--charcoal);">
-      iOS는 <b>사파리로 홈 화면에 설치된 앱</b>에서만 알림을 허용해요. 지금 브라우저로는 알림을 켤 수 없어요.
+      iOS는 <b>사파리로 홈 화면에 설치된 앱</b>에서만 알림을 허용해요.
     </div>
     ${inChrome ? `<button class="modal-btn modal-btn-watch" onclick="openInSafari()" style="margin-bottom:16px;">🧭 사파리에서 열기</button>` : ''}
     <ol style="padding-left:20px; display:flex; flex-direction:column; gap:10px; font-size:14px; line-height:1.5; margin-bottom:20px;">
-      ${inChrome ? '' : '<li><b>사파리</b> 앱으로 이 사이트를 열어주세요</li>'}
-      <li>하단 공유 버튼(⬆️)을 탭하세요</li>
-      <li><b>"홈 화면에 추가"</b>를 선택하세요</li>
-      <li>홈 화면에 생긴 아이콘으로 앱을 실행하세요</li>
-      <li>거기서 다시 알림을 켜주세요</li>
+      ${inChrome ? '' : '<li><b>사파리</b> 열기!</li>'}
+      <li>공유 버튼(⬆️) 탭!</li>
+      <li><b>"홈 화면에 추가"</b> 선택!</li>
+      <li>홈 화면 아이콘 실행!</li>
+      <li>다시 알람 받기 누르기!</li>
     </ol>
-    <button class="modal-btn" onclick="closeDetailModal()">${inChrome ? '나중에 할게요' : '확인했어요'}</button>
+    <button class="modal-btn" onclick="closeDetailModal()">확인했어요</button>
   `;
   overlay.classList.add('show');
   document.body.style.overflow = 'hidden';
