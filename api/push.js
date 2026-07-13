@@ -26,12 +26,6 @@ export default async function handler(req, res) {
 
   const action = req.method === 'GET' ? req.query.action : req.body?.action;
 
-  // TEMP: VAPID 키를 한 번 생성해서 Vercel 환경변수에 등록하기 위한 임시 액션.
-  // 키 등록 끝나면 이 블록은 지운다.
-  if (action === 'genkeys') {
-    return res.status(200).json(webpush.generateVAPIDKeys());
-  }
-
   if (action === 'public-key') {
     if (!VAPID_PUBLIC) return res.status(500).json({ error: 'VAPID not configured' });
     return res.status(200).json({ publicKey: VAPID_PUBLIC });

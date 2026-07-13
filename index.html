@@ -1759,8 +1759,9 @@ document.addEventListener('keydown', e => {
 });
 
 // ---------------------------------------------------------------------------
-// 알림받기 - 실제 푸시가 아니라 이 탭이 열려있는 동안 브라우저 알림으로 알려주는
-// 가벼운 리마인더. 앱/탭을 꺼두면 울리지 않는다는 한계가 있음.
+// 알림받기 - 웹푸시 구독에 성공하면 앱이 꺼져 있어도 서버가 정해진 시각에
+// 알려준다(api/push.js). 구독/전송에 실패하는 환경(iOS 사파리 미설치 등)을
+// 대비해 이 탭이 열려있는 동안은 로컬 타이머로도 한 번 더 확인해 폴백한다.
 const REMINDER_KEY = 'bnol_reminders';
 
 function getReminders() {
@@ -1768,6 +1769,35 @@ function getReminders() {
 }
 function saveReminders(list) {
   try { localStorage.setItem(REMINDER_KEY, JSON.stringify(list)); } catch (e) {}
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+// 탭/앱이 꺼져 있어도 알림이 오도록 브라우저 푸시 구독을 만든다. 실패해도(구형
+// 브라우저, iOS 사파리 미설치 등) 조용히 null을 반환해서 로컬 타이머로 폴백한다
+async function ensurePushSubscription() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const r = await fetch('/api/push?action=public-key');
+      const { publicKey } = await r.json();
+      if (!publicKey) return null;
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+    }
+    return sub;
+  } catch (e) {
+    return null;
+  }
 }
 
 async function toggleReminder(evt, id) {
@@ -1779,10 +1809,21 @@ async function toggleReminder(evt, id) {
   const exists = list.some(r => r.id === id);
 
   if (exists) {
+    const removed = list.find(r => r.id === id);
     list = list.filter(r => r.id !== id);
     saveReminders(list);
     btn.textContent = '🔕 알림받기';
     btn.classList.remove('on');
+    if (removed?.pushScheduled) {
+      ensurePushSubscription().then(sub => {
+        if (!sub) return;
+        fetch('/api/push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'cancel', subscription: sub.toJSON(), broadcastId: id }),
+        }).catch(() => {});
+      });
+    }
     return;
   }
 
@@ -1800,13 +1841,35 @@ async function toggleReminder(evt, id) {
   }
 
   const start = parseLabangDate(item.start);
+  const startAt = start ? start.getTime() : null;
+
+  let pushScheduled = false;
+  if (startAt) {
+    const sub = await ensurePushSubscription();
+    if (sub) {
+      try {
+        const r = await fetch('/api/push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'schedule',
+            subscription: sub.toJSON(),
+            broadcast: { id, title: item.title, url: item.url, platform: item.platform, startAt },
+          }),
+        });
+        pushScheduled = r.ok;
+      } catch (e) {}
+    }
+  }
+
   list.push({
     id,
     title: item.title,
     platform: item.platform,
     url: item.url,
-    startAt: start ? start.getTime() : null,
+    startAt,
     notified: false,
+    pushScheduled,
   });
   saveReminders(list);
   btn.textContent = '🔔 알림 설정됨';
@@ -1830,7 +1893,9 @@ function checkReminders() {
     }
 
     if (now >= r.startAt && !r.notified) {
-      if ('Notification' in window && Notification.permission === 'granted') {
+      // 서버 웹푸시로 예약된 항목은 탭이 닫혀 있어도 알림이 오니, 여기서 또
+      // 띄우면 탭이 열려 있을 때 중복 알림이 뜬다 - 푸시 예약 실패한 것만 폴백으로 쏜다
+      if (!r.pushScheduled && 'Notification' in window && Notification.permission === 'granted') {
         try {
           const n = new Notification(`🔴 ${r.platform || '라이브'} 방송 시작!`, {
             body: r.title || '',
