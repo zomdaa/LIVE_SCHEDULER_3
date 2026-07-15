@@ -5,6 +5,10 @@ import { kv } from '@vercel/kv';
 // 원래 개별 파일(api/crawl-*.js)이었던 것들을 여기 하나로 합쳤다.
 // 사용법: GET /api/crawl?platform=naver|kakao|ssg|11st|oliveyoung|gmarket&keyword=...
 
+// 네이버/11번가는 캐시 미스 시 날짜별로 순차/준순차 페이지네이션을 여러 번 도는데,
+// Vercel 기본 타임아웃은 이걸 감당하기엔 빠듯해서 여유를 넉넉히 잡는다
+export const config = { maxDuration: 60 };
+
 const CACHE_TTL = 600; // 10분 - 콜드 크롤(캐시 미스) 빈도를 줄여 체감 로딩 속도를 개선
 const MAX_CONCURRENT = 5;
 

@@ -1,5 +1,9 @@
 import { kv } from '@vercel/kv';
 
+// 캐시 미스 시 7개 날짜를 병렬 호출하는데, 응답이 느려지는 상황에서 Vercel
+// 기본 타임아웃에 걸리지 않도록 여유를 둔다
+export const config = { maxDuration: 60 };
+
 const CONCURRENCY_KEY = 'active-searches';
 const MAX_CONCURRENT = 10;
 
@@ -79,20 +83,25 @@ export default async function handler(req, res) {
 
   try {
     const fetchDate = async (date) => {
-      const r = await fetch('https://live.ecomm-data.com/api/schedule/list', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': '*/*',
-          'Accept-Language': 'ko-KR,ko;q=0.9',
-          'Origin': 'https://live.ecomm-data.com',
-          'Referer': 'https://live.ecomm-data.com/schedule/lb',
-        },
-        body: JSON.stringify({ date }),
-      });
-      if (!r.ok) return [];
-      const data = await r.json();
-      return Array.isArray(data?.list) ? data.list : [];
+      try {
+        const r = await fetch('https://live.ecomm-data.com/api/schedule/list', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': '*/*',
+            'Accept-Language': 'ko-KR,ko;q=0.9',
+            'Origin': 'https://live.ecomm-data.com',
+            'Referer': 'https://live.ecomm-data.com/schedule/lb',
+          },
+          body: JSON.stringify({ date }),
+        });
+        if (!r.ok) return [];
+        const data = await r.json();
+        return Array.isArray(data?.list) ? data.list : [];
+      } catch (e) {
+        // 날짜 하나가 네트워크 에러로 실패해도 전체를 죽이지 않는다
+        return [];
+      }
     };
 
     const results = await Promise.all(dates.map(fetchDate));

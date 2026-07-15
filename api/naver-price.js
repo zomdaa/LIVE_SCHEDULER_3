@@ -1,3 +1,5 @@
+import { kv } from '@vercel/kv';
+
 // 네이버 쇼핑 검색 오픈API로 키워드의 인기 모델 최저가를 가져온다.
 // https://developers.naver.com/docs/serviceapi/search/shopping/shopping.md
 //
@@ -7,6 +9,7 @@
 // 최대 5개까지 반환하고, 몇 개를 보여줄지(모바일 3 / PC 5)는 프론트에서 정한다.
 const MAX_ITEMS = 5;
 const RENTAL_KEYWORDS = ['렌탈', '렌트', '구독', '멤버십'];
+const CACHE_TTL = 3600; // 네이버 오픈API 일일 쿼터 보호용 - 같은 키워드는 1시간 재사용
 
 function isRental(title) {
   return RENTAL_KEYWORDS.some(kw => title.includes(kw));
@@ -20,6 +23,24 @@ export default async function handler(req, res) {
   const { keyword } = req.query;
   if (!keyword) return res.status(400).json({ error: 'keyword is required' });
 
+  const cleanKeyword = String(keyword).trim();
+  const cacheKey = 'naver-price:' + cleanKeyword.toLowerCase();
+
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+  const rateKey = 'rate-naver-price:' + ip;
+  try {
+    const count = await kv.incr(rateKey);
+    if (count === 1) await kv.expire(rateKey, 60);
+    if (count > 30) {
+      return res.status(429).json({ error: '요청이 너무 많아요. 잠시 후 다시 시도해주세요.' });
+    }
+  } catch (e) {}
+
+  try {
+    const cached = await kv.get(cacheKey);
+    if (cached) return res.status(200).json({ ...cached, cached: true });
+  } catch (e) {}
+
   const clientId = process.env.NAVER_CLIENT_ID;
   const clientSecret = process.env.NAVER_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
@@ -27,7 +48,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const params = new URLSearchParams({ query: keyword, display: '30', sort: 'sim' });
+    const params = new URLSearchParams({ query: cleanKeyword, display: '30', sort: 'sim' });
     const r = await fetch(`https://openapi.naver.com/v1/search/shop.json?${params}`, {
       headers: {
         'X-Naver-Client-Id': clientId,
@@ -61,10 +82,15 @@ export default async function handler(req, res) {
     }
 
     if (!items.length) {
-      return res.status(404).json({ error: 'no results found', keyword });
+      return res.status(404).json({ error: 'no results found', keyword: cleanKeyword });
     }
 
-    res.status(200).json({ keyword, items });
+    const responseBody = { keyword: cleanKeyword, items };
+    try {
+      await kv.set(cacheKey, responseBody, { ex: CACHE_TTL });
+    } catch (e) {}
+
+    res.status(200).json(responseBody);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
