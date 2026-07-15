@@ -1,4 +1,5 @@
 import { kv } from '@vercel/kv';
+import { waitUntil } from '@vercel/functions';
 
 // 네이버/카카오/SSG/11번가/올리브영/G마켓 라이브 스케줄을 라방바 없이 각 플랫폼에서
 // 직접 가져오는 통합 엔드포인트. Vercel Hobby 플랜의 서버리스 함수 12개 제한 때문에
@@ -9,7 +10,8 @@ import { kv } from '@vercel/kv';
 // Vercel 기본 타임아웃은 이걸 감당하기엔 빠듯해서 여유를 넉넉히 잡는다
 export const config = { maxDuration: 60 };
 
-const CACHE_TTL = 600; // 10분 - 콜드 크롤(캐시 미스) 빈도를 줄여 체감 로딩 속도를 개선
+const CACHE_TTL = 600; // 10분 - 신선하다고 보고 그대로 서빙하는 기준
+const CACHE_HARD_TTL = 3600; // 1시간 - 이 시점까지는 갱신 실패해도 예전 데이터라도 서빙 (stale-while-revalidate)
 const MAX_CONCURRENT = 5;
 
 // ---------------------------------------------------------------------------
@@ -1010,6 +1012,26 @@ const PLATFORMS = {
   ohouse: { cacheKey: 'crawl-ohouse:raw', label: '오늘의집', fetchRaw: fetchOhouseRaw },
 };
 
+// stale-while-revalidate 백그라운드 갱신. 락으로 중복 실행을 막아서 캐시가
+// 만료된 순간 몰린 요청들이 원본 플랫폼을 동시에 여러 번 두드리지 않게 한다
+async function refreshPlatformCache(platform, config) {
+  const lockKey = 'refreshing:' + platform;
+  try {
+    const gotLock = await kv.set(lockKey, '1', { ex: 30, nx: true });
+    if (!gotLock) return; // 이미 다른 요청이 갱신 중
+  } catch (e) {
+    // 락 확인 자체가 실패하면 최악의 경우 중복 갱신 정도라 그냥 진행
+  }
+  try {
+    const items = await config.fetchRaw();
+    if (items.length > 0) {
+      await kv.set(config.cacheKey, { items, fetchedAt: Date.now() }, { ex: CACHE_HARD_TTL });
+    }
+  } catch (e) {
+    // 백그라운드 갱신 실패는 조용히 무시 - 다음 요청이 다시 stale 상태로 재시도한다
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -1074,7 +1096,8 @@ export default async function handler(req, res) {
     try {
       const items = await fetchNaverSearchRaw(cleanKeyword);
       if (items.length > 0) {
-        try { await kv.set(searchCacheKey, items, { ex: CACHE_TTL }); } catch (e) {}
+        // 검색어별 캐시라 트래픽이 다양해질수록 히트율이 떨어지니 목록 캐시보다 길게 잡는다
+        try { await kv.set(searchCacheKey, items, { ex: CACHE_HARD_TTL }); } catch (e) {}
       }
       const upcoming = [...items].sort((a, b) => (a.start || '').localeCompare(b.start || ''));
       return res.status(200).json({ upcoming, total: upcoming.length, keyword: cleanKeyword, platform: config.label });
@@ -1084,9 +1107,26 @@ export default async function handler(req, res) {
   }
 
   let rawItems = null;
+  let cacheIsStale = false;
   try {
-    rawItems = await kv.get(config.cacheKey);
+    const cached = await kv.get(config.cacheKey);
+    if (Array.isArray(cached)) {
+      // 올리브영/G마켓/오늘의집처럼 ingest.js(GitHub Actions)가 직접 채운 레거시
+      // 포맷 - 자체 갱신 주기가 따로 있으니 그대로 서빙하고 아래 SWR은 건너뛴다
+      rawItems = cached;
+    } else if (cached && Array.isArray(cached.items) && typeof cached.fetchedAt === 'number') {
+      rawItems = cached.items;
+      cacheIsStale = (Date.now() - cached.fetchedAt) >= CACHE_TTL * 1000;
+    }
   } catch (e) {}
+
+  // 캐시가 신선 기준(10분)은 지났지만 하드 TTL(1시간) 안에서 아직 살아있으면,
+  // 유저를 기다리게/429 하는 대신 오래된 데이터를 즉시 서빙하고 백그라운드에서
+  // 조용히 갱신한다 (stale-while-revalidate) - 트래픽이 몰려도 원본 플랫폼 호출은
+  // 딱 1건만 나간다
+  if (rawItems && cacheIsStale) {
+    waitUntil(refreshPlatformCache(platform, config));
+  }
 
   const concurrencyKey = 'active-crawl:' + platform;
   let concurrencySlotTaken = false;
@@ -1105,10 +1145,10 @@ export default async function handler(req, res) {
   try {
     if (!rawItems) {
       rawItems = await config.fetchRaw();
-      // 빈 결과를 캐싱하면 일시적 실패가 5분간 그대로 굳어버리니, 뭔가 있을 때만 저장한다
+      // 빈 결과를 캐싱하면 일시적 실패가 그대로 굳어버리니, 뭔가 있을 때만 저장한다
       if (rawItems.length > 0) {
         try {
-          await kv.set(config.cacheKey, rawItems, { ex: CACHE_TTL });
+          await kv.set(config.cacheKey, { items: rawItems, fetchedAt: Date.now() }, { ex: CACHE_HARD_TTL });
         } catch (e) {}
       }
     }
