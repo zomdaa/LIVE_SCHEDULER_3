@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>출근길의 왕자 — 프로토타입</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #0b0c12;
+    overflow: hidden;
+    touch-action: none;
+    -webkit-user-select: none; user-select: none;
+  }
+  body {
+    display: flex; align-items: center; justify-content: center;
+  }
+  #wrap { position: relative; }
+  #game, #fg, #text {
+    position: absolute; left: 0; top: 0;
+    width: 100%; height: 100%;
+  }
+  #game, #fg {
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+  }
+  #game { background: #000; }
+  #fg, #text { pointer-events: none; }
+  #touch {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    display: none;
+    justify-content: space-between;
+    padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+    pointer-events: none;
+  }
+  #touch.show { display: flex; }
+  .tgroup { display: flex; gap: 12px; }
+  .tbtn {
+    width: 62px; height: 62px; border-radius: 14px;
+    background: rgba(255,255,255,.07);
+    border: 2px solid rgba(255,255,255,.28);
+    color: #cfe0ff; font-size: 26px; font-family: sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: auto; touch-action: none;
+  }
+  .tbtn.on { background: rgba(140,180,255,.35); }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="320" height="180"></canvas>
+  <canvas id="fg" width="640" height="360"></canvas>
+  <canvas id="text" width="960" height="540"></canvas>
+</div>
+<div id="touch">
+  <div class="tgroup">
+    <div class="tbtn" data-k="left">◀</div>
+    <div class="tbtn" data-k="right">▶</div>
+  </div>
+  <div class="tgroup">
+    <div class="tbtn" data-k="down">▼</div>
+    <div class="tbtn" data-k="jump">⤒</div>
+  </div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
