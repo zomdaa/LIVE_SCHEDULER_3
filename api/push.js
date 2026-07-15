@@ -19,6 +19,18 @@ function memberKey(broadcastId, endpoint) {
   return `${broadcastId}::${hash}`;
 }
 
+// Vercel 서버리스 함수는 UTC로 도니, startAt(epoch ms)을 KST 벽시계 문자열로
+// 보이려면 명시적으로 +9시간을 더한 뒤 getUTC*로 읽어야 서버 로컬 TZ에 안 흔들린다
+function formatKstDateTime(startAt) {
+  if (!startAt) return '';
+  const kst = new Date(startAt + 9 * 60 * 60 * 1000);
+  const mm = kst.getUTCMonth() + 1;
+  const dd = kst.getUTCDate();
+  const hh = String(kst.getUTCHours()).padStart(2, '0');
+  const mi = String(kst.getUTCMinutes()).padStart(2, '0');
+  return `${mm}/${dd} ${hh}:${mi}`;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -43,6 +55,7 @@ export default async function handler(req, res) {
         title: broadcast.title || '',
         url: broadcast.url || '',
         platform: broadcast.platform || '',
+        startAt: broadcast.startAt,
       }, { ex: 9 * 24 * 60 * 60 }); // 캘린더가 다루는 7일보다 여유있게
       await kv.zadd('push-schedule', { score: broadcast.startAt, member });
       return res.status(200).json({ ok: true });
@@ -82,8 +95,8 @@ export default async function handler(req, res) {
         if (!payload) continue;
         try {
           await webpush.sendNotification(payload.subscription, JSON.stringify({
-            title: `🔴 ${payload.platform || '라이브'} 방송 시작!`,
-            body: payload.title || '',
+            title: '🔔 알림 걸어둔 방송이 곧 시작합니다!',
+            body: `${formatKstDateTime(payload.startAt)} · ${payload.title || ''}`,
             url: payload.url || '/',
           }));
           sent++;
