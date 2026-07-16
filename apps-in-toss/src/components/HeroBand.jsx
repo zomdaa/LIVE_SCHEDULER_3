@@ -18,7 +18,7 @@ export default function HeroBand() {
         <div className="brand-title">
           <img src={`${ASSET_BASE}/logo-Photoroom.png`} alt="BUY NOW OR LIVE" />
         </div>
-        <h1>지금 살까, 방송 기다릴까?</h1>
+        <h1><span className="hero-highlight">지금</span> 살까, <span className="hero-highlight">방송</span> 기다릴까?</h1>
         <p className="sub">지난 라방과 앞으로 있을 라방 스케줄을<br />한눈에 보고 구매 타이밍 잡기!</p>
       </div>
       <div className="hero-deco left">

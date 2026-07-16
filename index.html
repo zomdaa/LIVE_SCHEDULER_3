@@ -107,7 +107,8 @@ body {
   padding: 7px 16px;
   border-radius: 9999px;
   margin-bottom: 1.25rem;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  border: 1.5px solid #1a1814;
+  box-shadow: 2px 2px 0 #1a1814;
 }
 .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
 
@@ -138,6 +139,7 @@ h1 {
     -1.5px 1.5px 0 #1a4a6e, 1.5px 1.5px 0 #1a4a6e,
     0 3px 8px rgba(0,0,0,0.25);
 }
+.hero-highlight { color: #FFF380; }
 
 .sub {
   font-size: 15px;
@@ -1073,7 +1075,7 @@ footer {
   <div class="hero-content">
   <div class="eyebrow"><span class="dot"></span><span id="todayDate"></span></div>
   <div class="brand-title" onclick="goHome()" style="cursor:pointer;"><img src="https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/logo-Photoroom.png" alt="BUY NOW OR LIVE" /></div>
-  <h1>지금 살까, 방송 기다릴까?</h1>
+  <h1><span class="hero-highlight">지금</span> 살까, <span class="hero-highlight">방송</span> 기다릴까?</h1>
   <p class="sub">지난 라방과 앞으로 있을 라방 스케줄을<br>한눈에 보고 구매 타이밍 잡기!</p>
   </div>
 
