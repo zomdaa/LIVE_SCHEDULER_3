@@ -149,7 +149,7 @@ export function makeVerdict(upcoming, past) {
 
   if (days === 0) {
     return {
-      title: '구매 타이밍 야~호~~',
+      title: '이따 라방 있어요!',
       body: `오늘 ${timeStr} ${nextBcast.platform}에서 방송 예정입니다. 조금 기다린 후 혜택을 확인하고 구매하는 것을 권장해요!`,
     };
   } else if (days === 1) {
