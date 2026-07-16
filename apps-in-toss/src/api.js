@@ -38,6 +38,11 @@ export async function fetchLowestPrice(keyword) {
   return data?.items || [];
 }
 
+export async function fetchPopularKeywords() {
+  const data = await safeJson(`${API_BASE}/api/popular`);
+  return (data?.top || []).map((item) => item.keyword);
+}
+
 export async function fetchLikeMeta(ids) {
   if (!ids.length) return {};
   const data = await safeJson(`${API_BASE}/api/like?ids=${encodeURIComponent(ids.join(','))}&meta=true`);
@@ -91,6 +96,82 @@ export function daysFromNow(d) {
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startOfTarget = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   return Math.round((startOfTarget - startOfToday) / (1000 * 60 * 60 * 24));
+}
+
+const RECENT_KEY = 'recentKeywords';
+
+export function getRecentKeywords() {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+
+export function saveRecentKeyword(keyword) {
+  try {
+    let list = getRecentKeywords().filter((k) => k !== keyword);
+    list.unshift(keyword);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 4)));
+  } catch (e) {}
+}
+
+// 다음 방송까지 얼마나 남았는지 보고 "지금 사야 할지 기다려야 할지" 짧게 판단해주는 요약.
+// index.html의 makeVerdict와 동일 로직
+export function makeVerdict(upcoming, past) {
+  const now = new Date();
+  const nextBcast = upcoming.find((u) => {
+    const end = parseLabangDate(u.end);
+    return !end || end >= now;
+  }) || upcoming[0];
+  const lastBcast = past[0];
+
+  const freqCount = past.length;
+  const freqPhrase = freqCount > 0 ? `최근 약 2개월간 ${freqCount}회 방송이 있었어요.` : null;
+
+  if (!nextBcast) {
+    if (past.length > 0) {
+      const last = parseLabangDate(lastBcast.start);
+      const ago = Math.abs(daysFromNow(last));
+      const body = freqCount >= 3
+        ? `${freqPhrase} 방송 빈도가 높은 편이라, 급한 구매가 아니라면 조금 기다려 보는 것은 어때요!?`
+        : `현시점 최저가로 구매해보세요! 최근 방송은 ${ago}일 전이었어요 (${lastBcast.platform}).`;
+      return { title: '예정된 방송이 없습니다ㅠ', body };
+    }
+    return { title: '예정된 방송이 없습니다ㅠ', body: '현시점 최저가로 구매해보세요!' };
+  }
+
+  const start = parseLabangDate(nextBcast.start);
+  const days = daysFromNow(start);
+  const hh = String(start.getHours()).padStart(2, '0');
+  const mm = String(start.getMinutes()).padStart(2, '0');
+  const timeStr = `${hh}:${mm}`;
+
+  if (days === 0) {
+    return {
+      title: '구매 타이밍 야~호~~',
+      body: `오늘 ${timeStr} ${nextBcast.platform}에서 방송 예정입니다. 조금 기다린 후 혜택을 확인하고 구매하는 것을 권장해요!`,
+    };
+  } else if (days === 1) {
+    return {
+      title: '맛떼루용~~',
+      body: `내일 ${timeStr} ${nextBcast.platform}에서 방송 예정입니다. 조금 기다린 후 혜택을 확인하고 구매하는 것을 권장해요!`,
+    };
+  } else if (days <= 3) {
+    return {
+      title: '맛떼루용~~',
+      body: `${days}일 후 ${timeStr} ${nextBcast.platform}에서 방송 예정입니다. 조금 기다린 후 혜택을 확인하고 구매하는 것을 권장해요!`,
+    };
+  } else if (days <= 7) {
+    return {
+      title: '맛떼루용~~',
+      body: `${days}일 후 방송이 예정되어 있어요 (${nextBcast.platform}). ${freqCount >= 2 ? freqPhrase + ' ' : ''}급하지 않다면 기다려볼 만해요.`,
+    };
+  }
+  return {
+    title: '맛떼루용~~',
+    body: `가장 가까운 방송까지 ${days}일 남았어요. ${freqCount >= 2 ? freqPhrase + ' ' : ''}급하면 지금 구매, 여유 있으면 기다려보세요.`,
+  };
 }
 
 export function dDayLabel(item) {

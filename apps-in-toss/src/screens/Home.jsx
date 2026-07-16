@@ -1,9 +1,13 @@
-import { useState } from 'react';
-import { fetchAllUpcoming, fetchPastSearch, fetchLikeCounts, fetchLowestPrice, parseLabangDate } from '../api.js';
+import { useEffect, useState } from 'react';
+import {
+  fetchAllUpcoming, fetchPastSearch, fetchLikeCounts, fetchLowestPrice, fetchPopularKeywords,
+  getRecentKeywords, saveRecentKeyword, makeVerdict, parseLabangDate,
+} from '../api.js';
 import BroadcastCard from '../components/BroadcastCard.jsx';
 import LowestPrice from '../components/LowestPrice.jsx';
+import Verdict from '../components/Verdict.jsx';
 
-const QUICK_KEYWORDS = ['로보락', '하기스', '미닉스', 'DJI'];
+const DEFAULT_KEYWORDS = ['로보락', '하기스', '미닉스', 'DJI'];
 
 export default function Home({ liked }) {
   const [keyword, setKeyword] = useState('');
@@ -11,13 +15,30 @@ export default function Home({ liked }) {
   const [upcoming, setUpcoming] = useState([]);
   const [past, setPast] = useState([]);
   const [lowestPrice, setLowestPrice] = useState([]);
+  const [verdict, setVerdict] = useState(null);
+  const [chips, setChips] = useState(DEFAULT_KEYWORDS);
+  const [searchedKeyword, setSearchedKeyword] = useState('');
+
+  useEffect(() => {
+    const recent = getRecentKeywords();
+    if (recent.length > 0) {
+      setChips(recent);
+      return;
+    }
+    fetchPopularKeywords().then((top) => {
+      if (top.length > 0) setChips(top);
+    });
+  }, []);
 
   async function runSearch(kw) {
     const cleaned = kw.trim();
     if (!cleaned) return;
+    saveRecentKeyword(cleaned);
     setKeyword(cleaned);
+    setSearchedKeyword(cleaned);
     setStatus('loading');
     setLowestPrice([]);
+    setVerdict(null);
 
     fetchLowestPrice(cleaned).then((items) => setLowestPrice(items.slice(0, 3)));
 
@@ -51,6 +72,7 @@ export default function Home({ liked }) {
 
     setUpcoming(sortedUpcoming);
     setPast(sortedPast);
+    setVerdict(makeVerdict(sortedUpcoming, sortedPast));
     setStatus('done');
 
     const ids = [...sortedUpcoming, ...sortedPast].map((i) => i.id).filter(Boolean);
@@ -81,12 +103,35 @@ export default function Home({ liked }) {
       </div>
 
       <div style={styles.chips}>
-        {QUICK_KEYWORDS.map((kw) => (
+        {chips.map((kw) => (
           <button key={kw} type="button" style={styles.chip} onClick={() => runSearch(kw)}>
             {kw}
           </button>
         ))}
       </div>
+
+      {status === 'done' && <Verdict verdict={verdict} />}
+
+      {status === 'done' && (
+        <div style={styles.priceRow}>
+          <a
+            style={{ ...styles.priceLink, background: '#fff' }}
+            href={`https://alltimeprice.com/search/?search=${encodeURIComponent(searchedKeyword)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            쿠팡 최저가 확인하기 →
+          </a>
+          <a
+            style={{ ...styles.priceLink, background: '#f0fdf4' }}
+            href={`https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=0&ie=utf8&query=${encodeURIComponent(searchedKeyword)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            네이버 최저가 확인하기 →
+          </a>
+        </div>
+      )}
 
       <LowestPrice items={lowestPrice} />
 
@@ -155,6 +200,18 @@ const styles = {
     fontWeight: 700,
     color: '#575757',
     cursor: 'pointer',
+  },
+  priceRow: { display: 'flex', gap: 8, marginTop: 14 },
+  priceLink: {
+    flex: 1,
+    padding: '11px 10px',
+    borderRadius: 12,
+    border: '1.5px solid #1a1814',
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: 800,
+    color: '#202020',
+    textDecoration: 'none',
   },
   muted: { fontSize: 14, color: '#8d8d8d', marginTop: 20 },
   sectionTitle: { fontSize: 15, fontWeight: 800, color: '#202020', marginBottom: 10 },
