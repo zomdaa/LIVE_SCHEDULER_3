@@ -5,7 +5,7 @@ export default function LowestPrice({ items }) {
     <div style={styles.section}>
       <div style={styles.header}>
         <span style={styles.dot} />
-        <span style={styles.title}>지금 네이버 인기템의 최저가에요!</span>
+        <span style={styles.title}>지금 검색한 브랜드(제품)의 최저가에요!</span>
       </div>
       <div style={styles.list}>
         {items.map((item, idx) => (
