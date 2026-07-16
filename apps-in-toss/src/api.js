@@ -33,6 +33,11 @@ export async function fetchPastSearch(keyword) {
   return data?.past || [];
 }
 
+export async function fetchLowestPrice(keyword) {
+  const data = await safeJson(`${API_BASE}/api/naver-price?keyword=${encodeURIComponent(keyword)}`);
+  return data?.items || [];
+}
+
 export async function fetchLikeMeta(ids) {
   if (!ids.length) return {};
   const data = await safeJson(`${API_BASE}/api/like?ids=${encodeURIComponent(ids.join(','))}&meta=true`);

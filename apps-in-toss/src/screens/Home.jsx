@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { fetchAllUpcoming, fetchPastSearch, fetchLikeCounts, parseLabangDate } from '../api.js';
+import { fetchAllUpcoming, fetchPastSearch, fetchLikeCounts, fetchLowestPrice, parseLabangDate } from '../api.js';
 import BroadcastCard from '../components/BroadcastCard.jsx';
+import LowestPrice from '../components/LowestPrice.jsx';
 
 const QUICK_KEYWORDS = ['로보락', '하기스', '미닉스', 'DJI'];
 
@@ -9,12 +10,16 @@ export default function Home({ liked }) {
   const [status, setStatus] = useState('idle'); // idle | loading | done | error
   const [upcoming, setUpcoming] = useState([]);
   const [past, setPast] = useState([]);
+  const [lowestPrice, setLowestPrice] = useState([]);
 
   async function runSearch(kw) {
     const cleaned = kw.trim();
     if (!cleaned) return;
     setKeyword(cleaned);
     setStatus('loading');
+    setLowestPrice([]);
+
+    fetchLowestPrice(cleaned).then((items) => setLowestPrice(items.slice(0, 3)));
 
     const [rawUpcoming, rawPast] = await Promise.all([
       fetchAllUpcoming(cleaned),
@@ -82,6 +87,8 @@ export default function Home({ liked }) {
           </button>
         ))}
       </div>
+
+      <LowestPrice items={lowestPrice} />
 
       {status === 'loading' && <p style={styles.muted}>불러오는 중...</p>}
       {status === 'done' && total === 0 && <p style={styles.muted}>검색 결과가 없어요</p>}
