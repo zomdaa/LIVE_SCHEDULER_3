@@ -2213,22 +2213,22 @@ function makeVerdict(upcoming, past) {
     };
   } else if (days === 1) {
     return {
-      title: '이따 라방 있어요!',
+      title: '곧 라방이 있어요!',
       body: `내일 ${timeStr} ${nextBcast.platform}에서 방송 예정입니다. 조금 기다린 후 혜택을 확인하고 구매하는 것을 권장해요!`
     };
   } else if (days <= 3) {
     return {
-      title: '이따 라방 있어요!',
+      title: '곧 라방이 있어요!',
       body: `${days}일 후 ${timeStr} ${nextBcast.platform}에서 방송 예정입니다. 조금 기다린 후 혜택을 확인하고 구매하는 것을 권장해요!`
     };
   } else if (days <= 7) {
     return {
-      title: '이따 라방 있어요!',
+      title: '곧 라방이 있어요!',
       body: `${days}일 후 방송이 예정되어 있어요 (${nextBcast.platform}). ${freqCount >= 2 ? freqPhrase + ' ' : ''}급하지 않다면 기다려볼 만해요.`
     };
   } else {
     return {
-      title: '이따 라방 있어요!',
+      title: '라방 편성이 되어있어요!',
       body: `가장 가까운 방송까지 ${days}일 남았어요. ${freqCount >= 2 ? freqPhrase + ' ' : ''}급하면 지금 구매, 여유 있으면 기다려보세요.`
     };
   }
