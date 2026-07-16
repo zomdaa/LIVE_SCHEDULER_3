@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   fetchAllUpcoming, fetchPastSearch, fetchLikeCounts, fetchLowestPrice, fetchPopularKeywords,
   getRecentKeywords, saveRecentKeyword, makeVerdict, parseLabangDate,
@@ -19,6 +19,17 @@ export default function Home({ liked }) {
   const [verdict, setVerdict] = useState(null);
   const [chips, setChips] = useState(DEFAULT_KEYWORDS);
   const [searchedKeyword, setSearchedKeyword] = useState('');
+  const searchBtnRef = useRef(null);
+
+  // 클릭할 때마다 눌리는 느낌의 바운스 애니메이션을 다시 재생시킨다 -
+  // 클래스를 이미 갖고 있으면 재부착해도 재생이 안 되니 강제로 리플로우를 일으킨다
+  function playBounce() {
+    const btn = searchBtnRef.current;
+    if (!btn) return;
+    btn.classList.remove('bounce');
+    void btn.offsetWidth;
+    btn.classList.add('bounce');
+  }
 
   useEffect(() => {
     const recent = getRecentKeywords();
@@ -87,22 +98,32 @@ export default function Home({ liked }) {
     <div>
       <HeroBand />
       <div className="content-wrap" style={{ paddingTop: 0 }}>
-      <div style={styles.searchRow}>
+      <div className="search-wrap">
         <input
-          style={styles.input}
           placeholder="브랜드명 혹은 제품명을 입력해보세요!"
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && runSearch(keyword)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return;
+            playBounce();
+            runSearch(keyword);
+          }}
         />
-        <button type="button" style={styles.searchBtn} onClick={() => runSearch(keyword)}>
+        <button
+          ref={searchBtnRef}
+          type="button"
+          onClick={() => {
+            playBounce();
+            runSearch(keyword);
+          }}
+        >
           찾기
         </button>
       </div>
 
-      <div style={styles.chips}>
+      <div className="chips">
         {chips.map((kw) => (
-          <button key={kw} type="button" style={styles.chip} onClick={() => runSearch(kw)}>
+          <button key={kw} type="button" className="chip" onClick={() => runSearch(kw)}>
             {kw}
           </button>
         ))}
@@ -111,9 +132,9 @@ export default function Home({ liked }) {
       {status === 'done' && <Verdict verdict={verdict} />}
 
       {status === 'done' && (
-        <div style={styles.priceRow}>
+        <div className="price-row">
           <a
-            style={{ ...styles.priceLink, background: '#fff' }}
+            className="price-link coupang"
             href={`https://alltimeprice.com/search/?search=${encodeURIComponent(searchedKeyword)}`}
             target="_blank"
             rel="noopener noreferrer"
@@ -121,7 +142,7 @@ export default function Home({ liked }) {
             쿠팡 최저가 확인하기 →
           </a>
           <a
-            style={{ ...styles.priceLink, background: '#f0fdf4' }}
+            className="price-link naver"
             href={`https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=0&ie=utf8&query=${encodeURIComponent(searchedKeyword)}`}
             target="_blank"
             rel="noopener noreferrer"
@@ -167,48 +188,6 @@ function Section({ title, items, liked }) {
 }
 
 const styles = {
-  searchRow: { display: 'flex', gap: 8, marginTop: 4 },
-  input: {
-    flex: 1,
-    padding: '12px 14px',
-    borderRadius: 12,
-    border: '1.5px solid #1a1814',
-    fontSize: 14,
-    outline: 'none',
-  },
-  searchBtn: {
-    padding: '0 18px',
-    borderRadius: 12,
-    border: '1.5px solid #1a1814',
-    background: '#ea2804',
-    color: '#fff',
-    fontWeight: 800,
-    fontSize: 14,
-    cursor: 'pointer',
-  },
-  chips: { display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' },
-  chip: {
-    padding: '6px 12px',
-    borderRadius: 9999,
-    border: '1px solid rgba(0,0,0,0.15)',
-    background: '#fff',
-    fontSize: 12,
-    fontWeight: 700,
-    color: '#575757',
-    cursor: 'pointer',
-  },
-  priceRow: { display: 'flex', gap: 8, marginTop: 14 },
-  priceLink: {
-    flex: 1,
-    padding: '11px 10px',
-    borderRadius: 12,
-    border: '1.5px solid #1a1814',
-    textAlign: 'center',
-    fontSize: 12,
-    fontWeight: 800,
-    color: '#202020',
-    textDecoration: 'none',
-  },
   muted: { fontSize: 14, color: '#8d8d8d', marginTop: 20 },
   sectionTitle: { fontSize: 15, fontWeight: 800, color: '#202020', marginBottom: 10 },
   list: { display: 'flex', flexDirection: 'column', gap: 10 },
