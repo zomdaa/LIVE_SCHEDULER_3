@@ -6,6 +6,9 @@ import crypto from 'crypto';
 // 호출하는 check-due가 실제로 브라우저 푸시 서비스에 알림을 쏴준다.
 // (Vercel Hobby 크론은 하루 1번뿐이라 자체 스케줄러로는 분 단위 트리거가 불가능함)
 
+// 같은 순간에 알림이 몰릴 수 있어 발송 루프에 여유를 준다 (아래 CHECK_CONCURRENCY 참고)
+export const config = { maxDuration: 60 };
+
 const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:zomdaaa@gmail.com';
@@ -17,6 +20,40 @@ if (VAPID_PUBLIC && VAPID_PRIVATE) {
 function memberKey(broadcastId, endpoint) {
   const hash = crypto.createHash('sha1').update(endpoint).digest('hex').slice(0, 16);
   return `${broadcastId}::${hash}`;
+}
+
+const CHECK_CONCURRENCY = 10; // 순차 발송이면 알림이 몰릴 때 크론 주기 안에 다 못 보낼 수 있어 병렬화
+
+async function sendDuePush(member) {
+  try {
+    const payload = await kv.get('push-payload:' + member);
+    await kv.zrem('push-schedule', member);
+    await kv.del('push-payload:' + member);
+    if (!payload) return 'skipped';
+    await webpush.sendNotification(payload.subscription, JSON.stringify({
+      title: '🔔 알림 걸어둔 방송이 곧 시작합니다!',
+      body: `${formatKstDateTime(payload.startAt)} · ${payload.title || ''}`,
+      url: payload.url || '/',
+    }));
+    return 'sent';
+  } catch (err) {
+    return 'failed';
+  }
+}
+
+// 고정 개수의 워커가 큐를 나눠 처리하는 방식 - Promise.all(items.map(...))처럼
+// 한꺼번에 다 쏘지 않고, 동시에 최대 CHECK_CONCURRENCY개만 진행되게 제한한다
+async function processDueQueue(members, limit) {
+  const results = [];
+  let cursor = 0;
+  async function worker() {
+    while (cursor < members.length) {
+      const i = cursor++;
+      results[i] = await sendDuePush(members[i]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, members.length) }, worker));
+  return results;
 }
 
 // Vercel 서버리스 함수는 UTC로 도니, startAt(epoch ms)을 KST 벽시계 문자열로
@@ -87,23 +124,9 @@ export default async function handler(req, res) {
     }
     try {
       const due = await kv.zrange('push-schedule', 0, Date.now(), { byScore: true });
-      let sent = 0, failed = 0;
-      for (const member of due) {
-        const payload = await kv.get('push-payload:' + member);
-        await kv.zrem('push-schedule', member);
-        await kv.del('push-payload:' + member);
-        if (!payload) continue;
-        try {
-          await webpush.sendNotification(payload.subscription, JSON.stringify({
-            title: '🔔 알림 걸어둔 방송이 곧 시작합니다!',
-            body: `${formatKstDateTime(payload.startAt)} · ${payload.title || ''}`,
-            url: payload.url || '/',
-          }));
-          sent++;
-        } catch (err) {
-          failed++;
-        }
-      }
+      const results = await processDueQueue(due, CHECK_CONCURRENCY);
+      const sent = results.filter(r => r === 'sent').length;
+      const failed = results.filter(r => r === 'failed').length;
       return res.status(200).json({ checked: due.length, sent, failed });
     } catch (err) {
       return res.status(500).json({ error: err.message });
