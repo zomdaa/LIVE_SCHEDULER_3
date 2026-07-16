@@ -1,0 +1,101 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #f9f7f3;
+  background-image: url('https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/BG.png');
+  background-size: 100% auto;
+  background-position: top center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  color: #202020;
+}
+
+@media (min-width: 768px) {
+  body {
+    background-image: url('https://raw.githubusercontent.com/zomdaa/LIVE_SCHEDULER_3/main/assets/BG_PC.png');
+  }
+}
+
+.content-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 20px 16px 84px;
+}
+
+.hero-band {
+  width: 100%;
+  padding: 2.5rem 1.5rem 1.75rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-content { position: relative; z-index: 1; }
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a1814;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 7px 16px;
+  border-radius: 9999px;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+.eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: #ea2804; }
+
+.brand-title {
+  margin-bottom: -0.3rem;
+  display: flex;
+  justify-content: center;
+}
+.brand-title img {
+  max-width: 100%;
+  width: 560px;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
+}
+
+.hero-band h1 {
+  font-family: 'JejuStoneWall', 'Pretendard', sans-serif;
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: #fff;
+  margin: -0.4rem 0 0.85rem;
+  text-shadow:
+    -1.5px -1.5px 0 #1a4a6e, 1.5px -1.5px 0 #1a4a6e,
+    -1.5px 1.5px 0 #1a4a6e, 1.5px 1.5px 0 #1a4a6e,
+    0 3px 8px rgba(0, 0, 0, 0.25);
+}
+
+.hero-band .sub {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.6;
+  max-width: 480px;
+  margin: 0 auto;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.hero-deco {
+  position: absolute;
+  top: -70px;
+  pointer-events: none;
+  z-index: 1;
+}
+.hero-deco img { width: 100%; display: block; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.2)); }
+.hero-deco.left { left: 2%; width: 88px; }
+.hero-deco.right { right: 4%; width: 46px; top: -56px; }
+
+@media (max-width: 420px) {
+  .hero-deco.left, .hero-deco.right { display: none; }
+}

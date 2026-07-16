@@ -6,6 +6,7 @@ import {
 import BroadcastCard from '../components/BroadcastCard.jsx';
 import LowestPrice from '../components/LowestPrice.jsx';
 import Verdict from '../components/Verdict.jsx';
+import HeroBand from '../components/HeroBand.jsx';
 
 const DEFAULT_KEYWORDS = ['로보락', '하기스', '미닉스', 'DJI'];
 
@@ -84,11 +85,8 @@ export default function Home({ liked }) {
 
   return (
     <div>
-      <header style={styles.header}>
-        <h1 style={styles.title}>BUY NOW OR LIVE</h1>
-        <p style={styles.subtitle}>지난 라방과 앞으로 있을 라방을 한눈에!</p>
-      </header>
-
+      <HeroBand />
+      <div className="content-wrap" style={{ paddingTop: 0 }}>
       <div style={styles.searchRow}>
         <input
           style={styles.input}
@@ -144,6 +142,7 @@ export default function Home({ liked }) {
       {status === 'done' && past.length > 0 && (
         <Section title="지난 방송 · 최근 3개월" items={past} liked={liked} />
       )}
+      </div>
     </div>
   );
 }
@@ -168,10 +167,7 @@ function Section({ title, items, liked }) {
 }
 
 const styles = {
-  header: { marginBottom: 16 },
-  title: { fontSize: 22, fontWeight: 800, color: '#202020', margin: 0 },
-  subtitle: { fontSize: 13, color: '#8d8d8d', marginTop: 4 },
-  searchRow: { display: 'flex', gap: 8 },
+  searchRow: { display: 'flex', gap: 8, marginTop: 4 },
   input: {
     flex: 1,
     padding: '12px 14px',

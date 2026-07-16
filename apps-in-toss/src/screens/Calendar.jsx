@@ -53,7 +53,7 @@ export default function Calendar({ liked }) {
   }, []);
 
   if (status === 'loading') {
-    return <p style={styles.muted}>불러오는 중...</p>;
+    return <div className="content-wrap"><p style={styles.muted}>불러오는 중...</p></div>;
   }
 
   const now = new Date();
@@ -63,7 +63,7 @@ export default function Calendar({ liked }) {
   const selectedDay = days.find((d) => dateKey(d) === selected);
 
   return (
-    <div>
+    <div className="content-wrap">
       <header style={styles.header}>
         <h1 style={styles.title}>📅 캘린더</h1>
         <p style={styles.subtitle}>오늘부터 7일간 예정된 전체 방송이에요</p>

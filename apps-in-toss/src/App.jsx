@@ -14,9 +14,7 @@ export default function App() {
 
   return (
     <div style={styles.page}>
-      <main style={styles.main}>
-        <Screen liked={liked} />
-      </main>
+      <Screen liked={liked} />
       <BottomNav active={tab} onChange={setTab} />
     </div>
   );
@@ -25,13 +23,7 @@ export default function App() {
 const styles = {
   page: {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Pretendard", sans-serif',
-    background: '#f9f7f3',
     minHeight: '100vh',
     boxSizing: 'border-box',
-  },
-  main: {
-    maxWidth: 720,
-    margin: '0 auto',
-    padding: '20px 16px 84px',
   },
 };

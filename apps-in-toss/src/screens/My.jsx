@@ -33,7 +33,7 @@ export default function My({ liked }) {
   }, [liked.likedIds]);
 
   return (
-    <div>
+    <div className="content-wrap">
       <header style={styles.header}>
         <h1 style={styles.title}>🙋 MY</h1>
         <p style={styles.subtitle}>찜한 방송을 모아봐요</p>
