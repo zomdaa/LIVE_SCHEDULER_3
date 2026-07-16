@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchLikeMeta, parseLabangDate } from '../api.js';
 import BroadcastCard from '../components/BroadcastCard.jsx';
+import NotificationOptIn from '../components/NotificationOptIn.jsx';
 
 export default function My({ liked }) {
   const [items, setItems] = useState([]);
@@ -55,6 +56,8 @@ export default function My({ liked }) {
           ))}
         </div>
       )}
+
+      <NotificationOptIn />
     </div>
   );
 }
