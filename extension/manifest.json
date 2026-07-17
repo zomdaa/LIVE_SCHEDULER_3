@@ -10,11 +10,25 @@
     "https://store.ohou.se/*",
     "https://prs.ohouse.com/*",
     "https://api.ocr.space/*",
-    "https://buynoworlive.vercel.app/*"
+    "https://buynoworlive.vercel.app/*",
+    "https://m.ssg.com/*",
+    "https://display.cjonstyle.com/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://m.ssg.com/*",
+        "https://m.oliveyoung.co.kr/*",
+        "https://m.gmarket.co.kr/*",
+        "https://display.cjonstyle.com/*"
+      ],
+      "js": ["benefit-content.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "action": {
     "default_title": "BUY NOW OR LIVE 수집기",
     "default_popup": "popup.html"

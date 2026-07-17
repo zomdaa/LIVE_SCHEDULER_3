@@ -745,6 +745,15 @@ body { padding-bottom: 64px; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.benefit {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary-deep);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .badge-box {
   flex-shrink: 0;
@@ -1362,6 +1371,7 @@ async function loadCalendar() {
 
     renderCalendarView();
     loadLikeCounts();
+    loadBenefits();
   } catch (e) {
     el.innerHTML = '<div class="empty">불러오지 못했어요</div>';
   }
@@ -1650,6 +1660,32 @@ async function loadLikeCounts() {
       if (typeof c === 'number') {
         b.querySelector('.like-count').textContent = c;
       }
+    });
+  } catch (e) {}
+}
+
+// 크롬 익스텐션이 방송 상세 페이지에서 OCR로 읽어둔 혜택 정보를 카드에 표시한다.
+// GET은 캐시 조회뿐이라 (OCR을 직접 트리거하지 않음) 카드 수만큼 불러도 저렴하다
+async function loadBenefits() {
+  const els = document.querySelectorAll('.benefit[data-benefit-url]');
+  if (!els.length) return;
+  const urls = [...new Set([...els].map(el => el.dataset.benefitUrl))];
+
+  try {
+    const r = await fetch('/api/benefit?ids=' + encodeURIComponent(urls.join(',')));
+    const data = await r.json();
+    const benefits = data.benefits || {};
+    els.forEach(el => {
+      const b = benefits[el.dataset.benefitUrl];
+      const parsed = b?.parsed;
+      if (!parsed) return;
+      const parts = [];
+      if (parsed.discount) parts.push(`💰 ${parsed.discount} 할인`);
+      if (parsed.coupon) parts.push(parsed.coupon);
+      if (parsed.gift) parts.push(parsed.gift);
+      if (!parts.length) return;
+      el.textContent = parts.join(' · ');
+      el.style.display = '';
     });
   } catch (e) {}
 }
@@ -2138,6 +2174,7 @@ function upcomingCard(item, idx) {
         <span class="platform">${item.platform || '라이브'}</span>
         <div class="title">${item.title}</div>
         ${item.channel ? `<div class="channel">${escapeAttr(item.channel)}</div>` : ''}
+        ${item.url ? `<div class="benefit" data-benefit-url="${escapeAttr(item.url)}" style="display:none"></div>` : ''}
       </div>
       ${likeHtml}
     </a>`;
@@ -2167,6 +2204,7 @@ function pastCard(item) {
       <div class="info">
         <span class="platform">${item.platform}</span>
         <div class="title">${item.title}</div>
+        ${item.url ? `<div class="benefit" data-benefit-url="${escapeAttr(item.url)}" style="display:none"></div>` : ''}
       </div>
       ${likeHtml}
     </a>`;
@@ -2382,6 +2420,7 @@ async function doSearch() {
 
     resultEl.innerHTML = html;
     loadLikeCounts();
+    loadBenefits();
 
   } catch (e) {
     setStatus('오류: ' + e.message);
