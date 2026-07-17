@@ -25,8 +25,8 @@ function parseBenefit(rawText) {
 }
 
 async function runOcr(imageUrl) {
-  const apiKey = process.env.OCR_SPACE_KEY;
-  if (!apiKey) throw new Error('OCR_SPACE_KEY가 설정되지 않았어요');
+  const apiKey = process.env.OCR_SPACE_API_KEY || process.env.OCR_SPACE_KEY;
+  if (!apiKey) throw new Error('OCR_SPACE_API_KEY가 설정되지 않았어요');
   const params = new URLSearchParams({
     apikey: apiKey,
     url: imageUrl,
