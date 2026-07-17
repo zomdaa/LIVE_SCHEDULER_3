@@ -1,7 +1,12 @@
-// 방송 상세 페이지에서 "혜택" 배너 이미지를 찾아 백엔드로 OCR을 요청한다.
-// crawl.js가 이미 구조화된 혜택 API를 갖고 있는 네이버/카카오/11번가/무신사는
-// 대상이 아니고, 이미지로만 혜택이 존재하는 SSG/올리브영/G마켓/CJ온스타일만
-// 대상이다 (오늘의집은 개별 방송 상세 URL이 없어 이 방식이 안 맞는다).
+// 방송 상세 페이지에서 "혜택" 정보를 찾아 백엔드로 넘긴다. crawl.js가 이미
+// 구조화된 혜택 API를 갖고 있는 네이버/카카오/11번가/무신사는 대상이 아니고,
+// 별도 API가 없는 SSG/올리브영/G마켓/CJ온스타일이 대상이다 (오늘의집은 개별
+// 방송 상세 URL이 없어 이 방식이 안 맞는다).
+//
+// 텍스트 우선, 이미지는 보조: G마켓 실제 플레이어(player.sauceflex.com)를
+// 열어보니 혜택이 이미지가 아니라 "🎁 라이브 혜택" 같은 제목으로 시작하는 순수
+// 텍스트 블록으로 DOM에 그대로 있었다 - 이미지+OCR보다 훨씬 정확하니 이런
+// 텍스트 블록을 먼저 찾고, 없을 때만 이미지를 찾아 OCR로 넘긴다.
 //
 // id로 crawl.js 내부의 platform별 id 포맷(teaserNo, broadcastSeq 등)을 그대로
 // 맞추려면 각 페이지에서 그 값을 다시 파싱해야 하는데, 실제 방송 상세 페이지를
@@ -32,6 +37,35 @@ async function markTried(url) {
     const entries = Object.entries(seen).sort((a, b) => b[1] - a[1]).slice(0, 200);
     await chrome.storage.local.set({ [SEEN_KEY]: Object.fromEntries(entries) });
   } catch (e) {}
+}
+
+// "🎁 라이브 혜택"처럼 혜택 섹션의 제목으로 보이는 텍스트 노드를 찾은 뒤,
+// 부모로 한 단계씩 올라가며 그 혜택 블록만 담고 있는 가장 좁은 컨테이너를
+// 찾는다. 클래스명이 CSS 모듈 해시(예: ___d2u7j)라 그대로 하드코딩하면 배포마다
+// 깨지니, 대신 "텍스트가 더 이상 늘어나지 않는 지점"으로 판단한다 - 부모로
+// 올라갈 때마다 실제 콘텐츠(제목+할인/쿠폰/증정 목록)가 텍스트에 새로 붙는
+// 동안은 같은 혜택 블록 안이고, 더 이상 안 늘어나는 순간이 그 블록의 최상위
+// 래퍼다. 그 이후로도 계속 올라가면 방송 제목이나 페이지의 다른 영역까지
+// 섞이기 시작하므로 딱 거기서 멈춘다 (실제 G마켓 sauceflex 플레이어 DOM으로
+// 검증됨: 9자 제목 -> 170자 혜택 블록에서 더 안 늘어나 멈춤, 계속 올라가면
+// 199자→방송 제목, 602자→페이지 전체까지 섞임)
+function findBenefitTextBlock() {
+  const heading = [...document.querySelectorAll('*')].find(
+    (el) => el.children.length === 0 && /🎁|라이브\s*혜택/.test(el.textContent || '')
+  );
+  if (!heading) return null;
+
+  let node = heading;
+  let text = (node.textContent || '').trim();
+  let parent = node.parentElement;
+  while (parent) {
+    const parentText = (parent.textContent || '').trim();
+    if (parentText.length <= text.length) break;
+    node = parent;
+    text = parentText;
+    parent = node.parentElement;
+  }
+  return text || null;
 }
 
 // 페이지 안에서 "혜택스러운" 이미지를 찾는다. class/id/alt에 키워드가 있는 것을
@@ -66,15 +100,16 @@ async function run() {
   const url = location.href;
   if (await alreadyTried(url)) return;
 
-  const imageUrl = findBenefitImage();
-  if (!imageUrl) return;
+  const rawText = findBenefitTextBlock();
+  const imageUrl = rawText ? null : findBenefitImage();
+  if (!rawText && !imageUrl) return;
 
   await markTried(url);
   try {
     await fetch(BENEFIT_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: url, imageUrl }),
+      body: JSON.stringify(rawText ? { id: url, rawText } : { id: url, imageUrl }),
     });
   } catch (e) {
     // 실패해도 조용히 무시 - 다음 6시간 뒤 재시도됨

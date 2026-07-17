@@ -12,7 +12,8 @@
     "https://api.ocr.space/*",
     "https://buynoworlive.vercel.app/*",
     "https://m.ssg.com/*",
-    "https://display.cjonstyle.com/*"
+    "https://display.cjonstyle.com/*",
+    "https://player.sauceflex.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -23,7 +24,8 @@
         "https://m.ssg.com/*",
         "https://m.oliveyoung.co.kr/*",
         "https://m.gmarket.co.kr/*",
-        "https://display.cjonstyle.com/*"
+        "https://display.cjonstyle.com/*",
+        "https://player.sauceflex.com/*"
       ],
       "js": ["benefit-content.js"],
       "run_at": "document_idle"

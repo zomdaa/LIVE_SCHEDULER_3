@@ -1,11 +1,13 @@
 import { kv } from '@vercel/kv';
 
-// 방송 상세 페이지의 "혜택" 배너 이미지를 OCR로 읽어서 텍스트로 캐싱한다.
-// DETAIL_FETCHERS(crawl.js)가 이미 구조화된 혜택 데이터를 주는 네이버/카카오/
-// 11번가/무신사와 달리, SSG/올리브영/G마켓/CJ온스타일/오늘의집은 혜택이
-// 이미지로만 존재해서 별도 API가 없다 - 크롬 익스텐션이 방송 상세 페이지에서
-// 혜택 이미지 URL을 감지해 여기로 넘기면, 같은 방송은 한 번만 OCR을 돌리고
-// 그 다음부터는 캐시에서 꺼내 쓴다.
+// 방송 상세 페이지의 "혜택" 정보를 캐싱한다. DETAIL_FETCHERS(crawl.js)가 이미
+// 구조화된 혜택 데이터를 주는 네이버/카카오/11번가/무신사와 달리, SSG/올리브영/
+// G마켓/CJ온스타일/오늘의집은 별도 API가 없다 - 크롬 익스텐션이 방송 상세
+// 페이지에서 혜택 정보를 감지해 여기로 넘기면 캐시에 저장해두고 이후 같은
+// 방송은 캐시에서 바로 꺼내 쓴다.
+// 감지 방식은 두 가지: 페이지 DOM에 혜택이 이미 텍스트로 있으면(rawText, 예:
+// G마켓 sauceflex 플레이어) 그대로 쓰고, 이미지로만 존재하면(imageUrl) OCR로
+// 읽는다 - 텍스트가 있을 땐 이미지+OCR보다 훨씬 정확하므로 항상 우선한다.
 
 export const config = { maxDuration: 30 };
 
@@ -86,8 +88,10 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { id, imageUrl } = req.body || {};
-    if (!id || !imageUrl) return res.status(400).json({ error: 'id and imageUrl are required' });
+    const { id, imageUrl, rawText } = req.body || {};
+    if (!id || (!imageUrl && !rawText)) {
+      return res.status(400).json({ error: 'id and (imageUrl or rawText) are required' });
+    }
 
     try {
       const cached = await kv.get('benefit:' + id);
@@ -95,9 +99,12 @@ export default async function handler(req, res) {
     } catch (e) {}
 
     try {
-      const raw = await runOcr(imageUrl);
+      // 상세 페이지 DOM에 혜택이 텍스트로 이미 있는 경우(예: G마켓의 sauceflex
+      // 플레이어)는 OCR 없이 그 텍스트를 바로 쓴다 - 이미지보다 훨씬 정확하다.
+      // 텍스트가 없을 때만 이미지 URL로 OCR을 돌린다
+      const raw = rawText ? String(rawText).slice(0, 2000) : await runOcr(imageUrl);
       const parsed = parseBenefit(raw);
-      const result = { id, raw, parsed, cachedAt: new Date().toISOString() };
+      const result = { id, raw, parsed, source: rawText ? 'text' : 'ocr', cachedAt: new Date().toISOString() };
       try {
         await kv.set('benefit:' + id, result, { ex: CACHE_EX });
       } catch (e) {}
