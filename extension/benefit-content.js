@@ -97,7 +97,12 @@ function findBenefitImage() {
 }
 
 async function run() {
-  const url = location.href;
+  // location.href를 그대로 쓰면 안 된다 - 실제로 sauceflex 플레이어에서
+  // 쿼리스트링 없이 방문해도 끝에 빈 "?"가 붙는 경우가 있어, index.html이
+  // crawl.js에서 받는 깨끗한 item.url("...acdf5", 물음표 없음)과 어긋나
+  // 캐시는 저장되는데 카드에는 안 붙는 문제가 있었다. origin+pathname만
+  // 써서 쿼리/해시를 항상 제거한다
+  const url = location.origin + location.pathname;
   if (await alreadyTried(url)) return;
 
   const rawText = findBenefitTextBlock();
