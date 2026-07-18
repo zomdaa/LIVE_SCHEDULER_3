@@ -52,9 +52,21 @@ async function fetchApiBenefit(id, source, baseUrl) {
     if (!r.ok) return null;
     const data = await r.json();
     const benefits = data.detail?.benefits || [];
-    const raw = benefits.join(' · ').slice(0, 2000);
+    let raw;
+    let resultSource;
+    if (benefits.length) {
+      raw = benefits.join(' · ').slice(0, 2000);
+      resultSource = 'api';
+    } else {
+      // 네이버는 혜택이 텍스트가 아니라 배너 이미지로만 있는 경우가 많다
+      // (benefits는 비어있고 benefitImages만 채워짐) - 이미 있는 OCR 경로를 재사용한다
+      const bannerUrl = data.detail?.benefitImages?.[0];
+      if (!bannerUrl) return null;
+      raw = (await runOcr(bannerUrl)).slice(0, 2000);
+      resultSource = 'api-ocr';
+    }
     const parsed = parseBenefit(raw);
-    const result = { id, raw, parsed, source: 'api', cachedAt: new Date().toISOString() };
+    const result = { id, raw, parsed, source: resultSource, cachedAt: new Date().toISOString() };
     try { await kv.set('benefit:' + id, result, { ex: CACHE_EX }); } catch (e) {}
     return result;
   } catch (e) {
