@@ -1380,6 +1380,8 @@ async function loadCalendar() {
 function selectCalendarDate(key) {
   calendarSelectedDate = key;
   renderCalendarView();
+  loadLikeCounts();
+  loadBenefits();
 }
 
 function renderCalendarView() {
