@@ -1,4 +1,5 @@
 import { kv } from '@vercel/kv';
+import { waitUntil } from '@vercel/functions';
 
 // 방송 상세 페이지의 "혜택" 정보를 캐싱한다. 카드에 바로 붙는 혜택 뱃지는
 // 세 가지 경로로 채워진다:
@@ -128,16 +129,19 @@ export default async function handler(req, res) {
           const source = resolveApiSource(bid);
           if (source) misses.push({ bid, source });
         }));
-        // 카카오/네이버 API 호출은 외부 요청이라 한 번에 너무 많이 쏘지 않게 5개씩
-        // 묶어 처리하고, 최악의 경우에도 요청 시간이 과도하게 늘어지지 않게 상한을 둔다
-        const CHUNK = 5;
-        const toFetch = misses.slice(0, 30);
-        for (let i = 0; i < toFetch.length; i += CHUNK) {
-          const chunk = toFetch.slice(i, i + CHUNK);
-          await Promise.all(chunk.map(async ({ bid, source }) => {
-            const result = await fetchApiBenefit(bid, source, baseUrl);
-            if (result) results[bid] = result;
-          }));
+        // 카카오/네이버 API(+OCR 폴백) 호출은 미스가 많으면(날짜를 처음 열 때 등)
+        // 30초 제한을 넘겨 요청 전체가 504로 죽어버릴 수 있다 - 실제로 겪은 문제라
+        // 이미 캐시된 결과는 즉시 응답하고, 미스는 응답을 막지 않고 백그라운드에서
+        // 채운다. 이번 응답엔 안 잡히지만 다음 로드부터는 캐시에서 바로 나온다
+        if (misses.length) {
+          const toFetch = misses.slice(0, 30);
+          waitUntil((async () => {
+            const CHUNK = 5;
+            for (let i = 0; i < toFetch.length; i += CHUNK) {
+              const chunk = toFetch.slice(i, i + CHUNK);
+              await Promise.all(chunk.map(({ bid, source }) => fetchApiBenefit(bid, source, baseUrl)));
+            }
+          })());
         }
         return res.status(200).json({ benefits: results });
       } catch (err) {
