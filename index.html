@@ -1672,14 +1672,24 @@ async function loadBenefits() {
   const els = document.querySelectorAll('.benefit[data-benefit-url]');
   if (!els.length) return;
   const urls = [...new Set([...els].map(el => el.dataset.benefitUrl))];
+  await fetchAndApplyBenefits(urls, els);
+}
 
+// 카카오/네이버처럼 서버가 처음 보는 방송이면, 응답을 늦추지 않으려고 서버가
+// 백그라운드에서 채워두고 이번 응답엔 안 담아 보낸다 (api/benefit.js 참고).
+// 그래서 한 번 응답을 받은 뒤, 그때 못 받은 것들만 잠깐 기다렸다 한 번 더
+// 물어봐서 처음 여는 날짜에도 뱃지가 뜨게 한다 (재시도는 딱 한 번만)
+async function fetchAndApplyBenefits(urls, els) {
   try {
     const r = await fetch('/api/benefit?ids=' + encodeURIComponent(urls.join(',')));
     const data = await r.json();
     const benefits = data.benefits || {};
+    const missed = [];
     els.forEach(el => {
-      const b = benefits[el.dataset.benefitUrl];
-      const parsed = b?.parsed;
+      const url = el.dataset.benefitUrl;
+      const b = benefits[url];
+      if (!b) { missed.push(url); return; }
+      const parsed = b.parsed;
       if (!parsed) return;
       const parts = [];
       if (parsed.discount) parts.push(`💰 ${parsed.discount} 할인`);
@@ -1689,6 +1699,13 @@ async function loadBenefits() {
       el.textContent = parts.join(' · ');
       el.style.display = '';
     });
+    if (missed.length) {
+      setTimeout(() => {
+        const stillHere = [...document.querySelectorAll('.benefit[data-benefit-url]')]
+          .filter(el => missed.includes(el.dataset.benefitUrl));
+        if (stillHere.length) fetchAndApplyBenefits(missed, stillHere);
+      }, 4000);
+    }
   } catch (e) {}
 }
 

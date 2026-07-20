@@ -53,18 +53,20 @@ async function fetchApiBenefit(id, source, baseUrl) {
     if (!r.ok) return null;
     const data = await r.json();
     const benefits = data.detail?.benefits || [];
-    let raw;
-    let resultSource;
+    let raw = '';
+    let resultSource = 'api';
     if (benefits.length) {
       raw = benefits.join(' · ').slice(0, 2000);
-      resultSource = 'api';
     } else {
       // 네이버는 혜택이 텍스트가 아니라 배너 이미지로만 있는 경우가 많다
       // (benefits는 비어있고 benefitImages만 채워짐) - 이미 있는 OCR 경로를 재사용한다
       const bannerUrl = data.detail?.benefitImages?.[0];
-      if (!bannerUrl) return null;
-      raw = (await runOcr(bannerUrl)).slice(0, 2000);
-      resultSource = 'api-ocr';
+      if (bannerUrl) {
+        raw = (await runOcr(bannerUrl)).slice(0, 2000);
+        resultSource = 'api-ocr';
+      }
+      // bannerUrl도 없으면 진짜 혜택이 없는 방송 - raw는 빈 채로 "없음"을 캐싱해서
+      // 매번 다시 조회하지 않게 한다 (뱃지는 어차피 parsed가 비면 안 뜬다)
     }
     const parsed = parseBenefit(raw);
     const result = { id, raw, parsed, source: resultSource, cachedAt: new Date().toISOString() };
