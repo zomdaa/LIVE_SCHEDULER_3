@@ -59,10 +59,19 @@ async function postBenefit(payload) {
 
 // "🎁 라이브 혜택"처럼 혜택 섹션의 제목으로 보이는 텍스트 노드를 찾은 뒤,
 // 부모로 한 단계씩 올라가며 그 혜택 블록만 담고 있는 가장 좁은 컨테이너를
-// 찾는다. 클래스명이 CSS 모듈 해시(예: ___d2u7j)라 그대로 하드코딩하면 배포마다
-// 깨지니, 대신 "텍스트가 더 이상 늘어나지 않는 지점"으로 판단한다 (실제 G마켓
-// sauceflex 플레이어 DOM으로 검증됨: 9자 제목 -> 170자 혜택 블록에서 멈춤)
+// 찾는다. 실제 서로 다른 두 방송(애경생활/닥터지)에서 확인해보니 혜택 제목
+// 문구는 "🎁 라이브 혜택"/"✓ [LIVE] 구매 금액별 사은품"처럼 방송마다 다르지만,
+// 감싸는 컨테이너 클래스는 둘 다 InfoOnDesktopV1-module__editor-code-area__
+// 프리픽스로 똑같았다 - 그래서 그 클래스를 1순위로 쓰고(해시 suffix만 배포마다
+// 다를 수 있어 partial match), 클래스 자체가 바뀌는 경우를 대비해 예전 방식
+// (제목 텍스트에서 위로 올라가며 "더 안 늘어나는 지점" 찾기)을 폴백으로 둔다
 function findBenefitTextBlock() {
+  const byClass = document.querySelector('div[class*="InfoOnDesktopV1-module__editor-code-area__"]');
+  if (byClass) {
+    const text = byClass.textContent.trim();
+    if (text) return text;
+  }
+
   const heading = [...document.querySelectorAll('*')].find(
     (el) => el.children.length === 0 && /🎁|라이브\s*혜택/.test(el.textContent || '')
   );
