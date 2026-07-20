@@ -2096,6 +2096,22 @@ function parseLabangDate(str) {
   return new Date(`20${yy}-${mm}-${dd}T${hh}:${mi}:00`);
 }
 
+// 카카오/11번가/무신사/오늘의집은 종료 시각(end)을 아예 안 준다(항상 null) -
+// 그래서 오늘 19시에 시작한 방송이 지금 21시여도 "아직 안 끝남"으로 잘못
+// 분류돼 계속 예정 방송에 남아있는 버그가 있었다. end가 없으면 먼저 플랫폼이
+// 주는 상태값(카카오 FINISHED/11번가 VOD=다시보기)으로 판단하고, 그것도
+// 애매하면(무신사 BEFORE는 "오늘"이라는 뜻일 뿐 종료 여부가 아님) 시작 후
+// 넉넉하게 4시간이 지났으면 끝난 걸로 간주한다 (실제 라이브 방송은 대부분 이보다 짧다)
+const ASSUMED_LIVE_DURATION_MS = 4 * 60 * 60 * 1000;
+function isBroadcastEnded(item, now) {
+  const end = parseLabangDate(item.end);
+  if (end) return end < now;
+  if (/FINISHED|VOD|ENDED/i.test(item.status || '')) return true;
+  const start = parseLabangDate(item.start);
+  if (!start) return false;
+  return (now - start) > ASSUMED_LIVE_DURATION_MS;
+}
+
 function parseSearchDate(str) {
   const m = str.match(/(\d{2})\.(\d{2})\.(\d{2})\s*\([^)]+\)\s*(\d{2}:\d{2})/);
   if (!m) return null;
@@ -2150,10 +2166,9 @@ function urgencyClass(isLive, isEnded, days) {
 
 function upcomingCard(item, idx) {
   const start = parseLabangDate(item.start);
-  const end = parseLabangDate(item.end);
   const dt = fmtDate(start);
   const now = new Date();
-  const isEnded = end ? end < now : false;
+  const isEnded = isBroadcastEnded(item, now);
   const isLive = item.status === 1 && !isEnded;
   const days = daysFromNow(start);
   const urgency = urgencyClass(isLive, isEnded, days);
@@ -2425,9 +2440,7 @@ async function doSearch() {
     rawUpcoming.forEach(item => {
       const start = parseLabangDate(item.start);
       if (start && start > upcomingCutoff) return; // 검색일 기준 +31일 넘는 예정 방송은 제외
-      const end = parseLabangDate(item.end);
-      const isEnded = end ? end < now : false;
-      if (isEnded) {
+      if (isBroadcastEnded(item, now)) {
         endedFromUpcoming.push(item);
       } else {
         stillUpcoming.push(item);
