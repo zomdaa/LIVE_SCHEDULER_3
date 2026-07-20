@@ -172,12 +172,15 @@ function extractOhouseByBrand() {
     const name = info.querySelector('.product-name')?.textContent.trim();
     if (!brand || !name) return;
     const priceText = info.querySelector('.price')?.textContent || '';
-    const m = priceText.match(/(\d+)%\s*([\d,]+)/);
+    // 할인율 없이 정가만 파는 상품도 있어(%가 아예 안 나옴) 할인율 부분은 선택적으로 매칭한다
+    const m = priceText.match(/(?:(\d+)%\s*)?([\d,]+)\s*$/);
     const product = {
       name,
       price: m ? Number(m[2].replace(/,/g, '')) : null,
-      discountRate: m ? Number(m[1]) : null,
-      image: info.closest('article,li')?.querySelector('img')?.src || null,
+      discountRate: m && m[1] ? Number(m[1]) : null,
+      // 이미지가 뷰포트를 벗어나면 placeholder로 되돌아가는 지연로딩이라 안정적으로
+      // 못 얻는다 - 가격 추이엔 필요 없는 정보라 그냥 비워둔다
+      image: null,
       url: null,
     };
     (byBrand[brand] = byBrand[brand] || []).push(product);
@@ -186,6 +189,13 @@ function extractOhouseByBrand() {
 }
 
 async function runOhouse() {
+  // 가격 숫자가 카운트업 애니메이션이라 화면에 스크롤해서 들어와야 값이 채워진다
+  // (실제로 189개 상품 중 63개가 애니메이션 전이라 비어있었는데, 바닥까지 한 번
+  // 스크롤하는 것만으로 해결되는 것을 확인함 - 화면에 보이지 않아도 스크롤
+  // 위치만 지나가면 트리거된다)
+  window.scrollTo(0, document.body.scrollHeight);
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+
   const byBrand = extractOhouseByBrand();
   const brands = Object.keys(byBrand);
   for (const brand of brands) {
