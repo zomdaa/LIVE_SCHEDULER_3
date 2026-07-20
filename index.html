@@ -2101,8 +2101,8 @@ function parseLabangDate(str) {
 // 분류돼 계속 예정 방송에 남아있는 버그가 있었다. end가 없으면 먼저 플랫폼이
 // 주는 상태값(카카오 FINISHED/11번가 VOD=다시보기)으로 판단하고, 그것도
 // 애매하면(무신사 BEFORE는 "오늘"이라는 뜻일 뿐 종료 여부가 아님) 시작 후
-// 넉넉하게 4시간이 지났으면 끝난 걸로 간주한다 (실제 라이브 방송은 대부분 이보다 짧다)
-const ASSUMED_LIVE_DURATION_MS = 4 * 60 * 60 * 1000;
+// 60분이 지났으면 끝난 걸로 간주한다
+const ASSUMED_LIVE_DURATION_MS = 60 * 60 * 1000;
 function isBroadcastEnded(item, now) {
   const end = parseLabangDate(item.end);
   if (end) return end < now;
