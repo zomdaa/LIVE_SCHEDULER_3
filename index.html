@@ -863,6 +863,12 @@ footer {
   color: #8a8477;
   margin-top: 6px;
 }
+.section-loading {
+  text-align: center;
+  font-size: 13px;
+  color: #8a8477;
+  padding: 16px 0;
+}
 
 .modal-overlay {
   display: none;
@@ -2314,10 +2320,17 @@ async function loadLowestPrice(keyword) {
   }
 }
 
+// 예정 방송을 먼저 보여준 뒤 지난 방송을 나중에 이어붙이는 구조라, 그 사이에
+// 사용자가 다른 키워드로 다시 검색하면 이전 검색의 느린 지난 방송 응답이 나중에
+// 도착해 새 검색 결과를 덮어쓸 수 있다 - 검색마다 세대 번호를 매겨서, 자기보다
+// 최신 검색이 이미 시작됐으면 조용히 렌더링을 건너뛴다
+let searchEpoch = 0;
+
 async function doSearch() {
   const keyword = input.value.trim();
   if (!keyword) return;
 
+  const myEpoch = ++searchEpoch;
   saveRecentKeyword(keyword);
 
   btn.disabled = true;
@@ -2330,71 +2343,19 @@ async function doSearch() {
 
   loadLowestPrice(keyword);
 
-  try {
-    const [crawlResults, searchRes] = await Promise.all([
-      Promise.all(CRAWL_PLATFORMS.map(p =>
-        fetch(`/api/crawl?platform=${p}&keyword=${encodeURIComponent(keyword)}`)
-          .then(r => r.ok ? r.json() : { upcoming: [] })
-          .catch(() => ({ upcoming: [] }))
-      )),
-      fetch(`/api/search?keyword=${encodeURIComponent(keyword)}`),
-    ]);
+  const priceBtn = document.getElementById('priceBtn');
+  priceBtn.href = 'https://alltimeprice.com/search/?search=' + encodeURIComponent(keyword);
+  priceBtn.style.display = 'flex';
 
-    const schedData = {
-      upcoming: crawlResults.flatMap((r, i) =>
-        (r.upcoming || []).map(item => ({ ...item, platformKey: CRAWL_PLATFORMS[i] }))
-      ),
-    };
-    const searchData = await searchRes.json();
+  const naverBtn = document.getElementById('naverBtn');
+  naverBtn.href = 'https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=0&ie=utf8&query=' + encodeURIComponent(keyword);
+  naverBtn.style.display = 'flex';
 
-    if (!searchRes.ok) {
-      const msg = searchData.error || '잠시 후 다시 시도해주세요.';
-      setStatus(msg);
-      resultEl.innerHTML = '';
-      return;
-    }
+  let upcoming = [];
+  let past = [];
+  let endedFromUpcoming = [];
 
-    const rawUpcoming = schedData.upcoming || [];
-    const rawPast = searchData.past || [];
-
-    const now = new Date();
-    const upcomingCutoff = new Date(now.getTime() + 31 * 24 * 60 * 60 * 1000);
-    const stillUpcoming = [];
-    const endedFromUpcoming = [];
-
-    rawUpcoming.forEach(item => {
-      const start = parseLabangDate(item.start);
-      if (start && start > upcomingCutoff) return; // 검색일 기준 +31일 넘는 예정 방송은 제외
-      const end = parseLabangDate(item.end);
-      const isEnded = end ? end < now : false;
-      if (isEnded) {
-        endedFromUpcoming.push(item);
-      } else {
-        stillUpcoming.push(item);
-      }
-    });
-
-    const upcoming = stillUpcoming.sort((a, b) => {
-      const da = parseLabangDate(a.start);
-      const db = parseLabangDate(b.start);
-      if (!da) return 1;
-      if (!db) return -1;
-      return da - db;
-    });
-    const past = [...endedFromUpcoming, ...rawPast]
-      .sort((a, b) => String(b.start).localeCompare(String(a.start)));
-
-    const total = upcoming.length + past.length;
-    setStatus(total ? '' : '검색 결과가 없어요');
-
-    const priceBtn = document.getElementById('priceBtn');
-    priceBtn.href = 'https://alltimeprice.com/search/?search=' + encodeURIComponent(keyword);
-    priceBtn.style.display = 'flex';
-
-    const naverBtn = document.getElementById('naverBtn');
-    naverBtn.href = 'https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=0&ie=utf8&query=' + encodeURIComponent(keyword);
-    naverBtn.style.display = 'flex';
-
+  function render(searchPending) {
     const verdict = makeVerdict(upcoming, past);
     if (verdict) {
       verdictTitle.textContent = verdict.title;
@@ -2405,7 +2366,6 @@ async function doSearch() {
     }
 
     let html = '';
-
     window.__upcomingItems = upcoming;
 
     if (upcoming.length) {
@@ -2431,6 +2391,11 @@ async function doSearch() {
           <div class="cards">${past.map(pastCard).join('')}</div>
           <div class="data-credit">지난 방송 데이터 출처: 라방바 데이터랩</div>
         </div>`;
+    } else if (searchPending) {
+      // 과거 방송 조회(/api/search)는 외부 API를 60일치 훑어야 해서 예정 방송보다
+      // 훨씬 느리다 - 여기서 같이 기다리게 하지 않고, 예정 방송을 먼저 보여준 뒤
+      // 지난 방송은 도착하는 대로 이어붙인다
+      html += `<div class="section-loading">지난 방송 불러오는 중...</div>`;
     }
 
     if (!html) {
@@ -2440,12 +2405,78 @@ async function doSearch() {
     resultEl.innerHTML = html;
     loadLikeCounts();
     loadBenefits();
+  }
+
+  try {
+    const crawlResults = await Promise.all(CRAWL_PLATFORMS.map(p =>
+      fetch(`/api/crawl?platform=${p}&keyword=${encodeURIComponent(keyword)}`)
+        .then(r => r.ok ? r.json() : { upcoming: [] })
+        .catch(() => ({ upcoming: [] }))
+    ));
+
+    const rawUpcoming = crawlResults.flatMap((r, i) =>
+      (r.upcoming || []).map(item => ({ ...item, platformKey: CRAWL_PLATFORMS[i] }))
+    );
+
+    const now = new Date();
+    const upcomingCutoff = new Date(now.getTime() + 31 * 24 * 60 * 60 * 1000);
+    const stillUpcoming = [];
+
+    rawUpcoming.forEach(item => {
+      const start = parseLabangDate(item.start);
+      if (start && start > upcomingCutoff) return; // 검색일 기준 +31일 넘는 예정 방송은 제외
+      const end = parseLabangDate(item.end);
+      const isEnded = end ? end < now : false;
+      if (isEnded) {
+        endedFromUpcoming.push(item);
+      } else {
+        stillUpcoming.push(item);
+      }
+    });
+
+    upcoming = stillUpcoming.sort((a, b) => {
+      const da = parseLabangDate(a.start);
+      const db = parseLabangDate(b.start);
+      if (!da) return 1;
+      if (!db) return -1;
+      return da - db;
+    });
+    past = [...endedFromUpcoming].sort((a, b) => String(b.start).localeCompare(String(a.start)));
+
+    if (myEpoch !== searchEpoch) return; // 그 사이 다른 키워드로 새 검색이 시작됨
+
+    stopLoadingAnimation();
+    render(true);
+    btn.disabled = false;
+
+    // 지난 방송(라방바 60일 스캔)은 여기서부터 기다린다 - 이미 예정 방송은 화면에
+    // 떠 있으니 사용자를 막지 않는다
+    const searchRes = await fetch(`/api/search?keyword=${encodeURIComponent(keyword)}`);
+    const searchData = await searchRes.json();
+
+    if (myEpoch !== searchEpoch) return; // 응답 도착 전에 더 최신 검색이 시작됨 - 결과 버림
+
+    if (!searchRes.ok) {
+      setStatus(searchData.error || '지난 방송을 불러오지 못했어요.');
+      render(false);
+      return;
+    }
+
+    const rawPast = searchData.past || [];
+    past = [...endedFromUpcoming, ...rawPast]
+      .sort((a, b) => String(b.start).localeCompare(String(a.start)));
+
+    const total = upcoming.length + past.length;
+    setStatus(total ? '' : '검색 결과가 없어요');
+    render(false);
 
   } catch (e) {
-    setStatus('오류: ' + e.message);
+    if (myEpoch === searchEpoch) setStatus('오류: ' + e.message);
   } finally {
-    stopLoadingAnimation();
-    btn.disabled = false;
+    if (myEpoch === searchEpoch) {
+      stopLoadingAnimation();
+      btn.disabled = false;
+    }
   }
 }
 </script>
