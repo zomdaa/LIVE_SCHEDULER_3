@@ -1732,7 +1732,7 @@ async function loadBenefits() {
 // 백그라운드에서 채워두고 이번 응답엔 안 담아 보낸다 (api/benefit.js 참고).
 // 그래서 한 번 응답을 받은 뒤, 그때 못 받은 것들만 잠깐 기다렸다 한 번 더
 // 물어봐서 처음 여는 날짜에도 뱃지가 뜨게 한다 (재시도는 딱 한 번만)
-async function fetchAndApplyBenefits(urls, els) {
+async function fetchAndApplyBenefits(urls, els, isRetry) {
   try {
     const r = await fetch('/api/benefit?ids=' + encodeURIComponent(urls.join(',')));
     const data = await r.json();
@@ -1752,11 +1752,16 @@ async function fetchAndApplyBenefits(urls, els) {
       el.textContent = parts.join(' · ');
       el.style.display = '';
     });
-    if (missed.length) {
+    // 딱 한 번만 재시도한다 - /replays/ 같은 서버가 아예 처리할 수 없는 id는
+    // resolveApiSource가 영영 못 찾아서 항상 "missed"로 남는데, 재시도 결과에서도
+    // 또 setTimeout을 걸면(예전 코드가 그랬음) 그 방송은 4초마다 영원히 다시
+    // 조회된다 - 실제로 이 버그 때문에 같은 배치 요청이 수십 번 쌓여
+    // 레이트리밋(429)을 계속 유발하는 걸 발견했다
+    if (missed.length && !isRetry) {
       setTimeout(() => {
         const stillHere = [...document.querySelectorAll('.benefit[data-benefit-url]')]
           .filter(el => missed.includes(el.dataset.benefitUrl));
-        if (stillHere.length) fetchAndApplyBenefits(missed, stillHere);
+        if (stillHere.length) fetchAndApplyBenefits(missed, stillHere, true);
       }, 4000);
     }
   } catch (e) {}
