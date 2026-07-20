@@ -484,6 +484,45 @@ body { padding-bottom: 64px; }
 }
 .verdict-text .highlight { color: var(--primary-deep); font-weight: 800; }
 
+.price-trend-section {
+  display: none;
+  margin-top: 1.25rem;
+  position: relative;
+  z-index: 1;
+}
+.price-trend-section.show { display: block; }
+.price-trend-section .section-header { margin-bottom: 10px; }
+.price-trend-stats {
+  background: var(--card);
+  border: 1.5px solid #1a1814;
+  box-shadow: 2px 2px 0 #1a1814;
+  border-radius: 12px;
+  padding: 14px;
+}
+.price-trend-row {
+  display: flex;
+  justify-content: space-around;
+  text-align: center;
+}
+.price-trend-stat { display: flex; flex-direction: column; gap: 4px; }
+.price-trend-label { font-size: 11px; color: var(--mute); font-weight: 600; }
+.price-trend-value { font-size: 15px; font-weight: 800; }
+.price-trend-value.low { color: var(--primary-deep); }
+.price-trend-next {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--hairline);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+.price-trend-note {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--mute);
+  text-align: center;
+}
+
 .lowest-price-section {
   display: none;
   margin-top: 1.25rem;
@@ -1128,6 +1167,14 @@ footer {
     <div class="verdict-label">💬 타이밍 분석</div>
     <div class="verdict-title" id="verdictTitle"></div>
     <div class="verdict-text" id="verdictText"></div>
+  </div>
+
+  <div class="price-trend-section" id="priceTrendSection">
+    <div class="section-header">
+      <div class="section-dot dot-price"></div>
+      <div class="section-title">라이브 방송 가격대는 이래요</div>
+    </div>
+    <div class="price-trend-stats" id="priceTrendStats"></div>
   </div>
 
   <div class="price-row">
@@ -2344,6 +2391,59 @@ async function loadLowestPrice(keyword) {
   }
 }
 
+// "지금 검색한 브랜드(제품)의 최저가"(loadLowestPrice)는 네이버쇼핑 전체에서
+// 지금 이 순간 가장 싼 곳 하나를 보여주는 것이고, 이건 그거랑 다르게 "라이브
+// 방송에서는 보통 얼마에 풀렸는지"를 보여준다 - 지난 방송들의 상품 가격을 모아
+// 최저/평균/최고를 계산하고, 다음 예정 방송에 이미 가격이 올라와 있으면 그것도
+// 같이 보여준다. 데이터가 익스텐션이 방문한 방송에만 쌓이는 구조라 최소 2개
+// 이상 모였을 때만 보여준다 (1개뿐이면 "최저=평균=최고"라 보여줄 의미가 없음)
+async function loadPriceTrend(upcoming, past) {
+  const section = document.getElementById('priceTrendSection');
+  const statsEl = document.getElementById('priceTrendStats');
+  const items = [...upcoming, ...past];
+  const urls = [...new Set(items.map(benefitKeyFor).filter(Boolean))];
+  if (!urls.length) { section.classList.remove('show'); return; }
+
+  try {
+    const r = await fetch('/api/benefit?ids=' + encodeURIComponent(urls.join(',')));
+    const data = await r.json();
+    const benefits = data.benefits || {};
+
+    const cheapestPrice = (item) => {
+      const products = benefits[benefitKeyFor(item)]?.products || [];
+      const prices = products.map(p => p.price).filter(p => typeof p === 'number' && p > 0);
+      return prices.length ? Math.min(...prices) : null;
+    };
+
+    const pastPrices = past.map(cheapestPrice).filter(p => p !== null);
+    if (pastPrices.length < 2) { section.classList.remove('show'); return; }
+
+    const min = Math.min(...pastPrices);
+    const max = Math.max(...pastPrices);
+    const avg = Math.round(pastPrices.reduce((a, b) => a + b, 0) / pastPrices.length);
+    const fmt = (n) => n.toLocaleString('ko-KR') + '원';
+
+    let html = `
+      <div class="price-trend-row">
+        <div class="price-trend-stat"><div class="price-trend-label">최저</div><div class="price-trend-value low">${fmt(min)}</div></div>
+        <div class="price-trend-stat"><div class="price-trend-label">평균</div><div class="price-trend-value">${fmt(avg)}</div></div>
+        <div class="price-trend-stat"><div class="price-trend-label">최고</div><div class="price-trend-value">${fmt(max)}</div></div>
+      </div>`;
+
+    const nextItem = upcoming.find(item => cheapestPrice(item) !== null);
+    if (nextItem) {
+      const dt = fmtDate(parseLabangDate(nextItem.start));
+      html += `<div class="price-trend-next">다음 방송(${dt.month}/${dt.day}) 예상가 ${fmt(cheapestPrice(nextItem))}</div>`;
+    }
+    html += `<div class="price-trend-note">최근 ${pastPrices.length}회 라이브 방송 기준</div>`;
+
+    statsEl.innerHTML = html;
+    section.classList.add('show');
+  } catch (e) {
+    section.classList.remove('show');
+  }
+}
+
 // 예정 방송을 먼저 보여준 뒤 지난 방송을 나중에 이어붙이는 구조라, 그 사이에
 // 사용자가 다른 키워드로 다시 검색하면 이전 검색의 느린 지난 방송 응답이 나중에
 // 도착해 새 검색 결과를 덮어쓸 수 있다 - 검색마다 세대 번호를 매겨서, 자기보다
@@ -2363,6 +2463,7 @@ async function doSearch() {
   document.getElementById('priceBtn').style.display = 'none';
   document.getElementById('naverBtn').style.display = 'none';
   document.getElementById('lowestPriceSection').classList.remove('show');
+  document.getElementById('priceTrendSection').classList.remove('show');
   setStatus('');
 
   loadLowestPrice(keyword);
@@ -2429,6 +2530,7 @@ async function doSearch() {
     resultEl.innerHTML = html;
     loadLikeCounts();
     loadBenefits();
+    loadPriceTrend(upcoming, past);
   }
 
   try {
