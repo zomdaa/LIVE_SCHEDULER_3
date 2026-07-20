@@ -2155,6 +2155,15 @@ function formatVerdictBody(text) {
   return trimmed.map(escapeAttr).join('<br>');
 }
 
+// 오늘의집은 모든 방송이 같은 기획전 URL을 공유해서 item.url로 조회하면
+// 서로 덮어써버린다 - 대신 채널(브랜드)명으로 만든 키를 쓴다. extension의
+// benefit-content.js가 오늘의집에서 정확히 이 키 형식("ohouse-brand:{브랜드명}")으로
+// POST하므로 서로 반드시 일치해야 한다
+function benefitKeyFor(item) {
+  if (item.platformKey === 'ohouse' && item.channel) return 'ohouse-brand:' + item.channel;
+  return item.url || null;
+}
+
 function urgencyClass(isLive, isEnded, days) {
   if (isEnded) return 'urgency-ended';
   if (isLive) return 'urgency-live';
@@ -2214,7 +2223,7 @@ function upcomingCard(item, idx) {
         <span class="platform">${item.platform || '라이브'}</span>
         <div class="title">${item.title}</div>
         ${item.channel ? `<div class="channel">${escapeAttr(item.channel)}</div>` : ''}
-        ${item.url ? `<div class="benefit" data-benefit-url="${escapeAttr(item.url)}" style="display:none"></div>` : ''}
+        ${benefitKeyFor(item) ? `<div class="benefit" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>` : ''}
       </div>
       ${likeHtml}
     </a>`;
@@ -2244,7 +2253,7 @@ function pastCard(item) {
       <div class="info">
         <span class="platform">${item.platform}</span>
         <div class="title">${item.title}</div>
-        ${item.url ? `<div class="benefit" data-benefit-url="${escapeAttr(item.url)}" style="display:none"></div>` : ''}
+        ${benefitKeyFor(item) ? `<div class="benefit" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>` : ''}
       </div>
       ${likeHtml}
     </a>`;

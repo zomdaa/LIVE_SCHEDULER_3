@@ -11,7 +11,6 @@
     "https://prs.ohouse.com/*",
     "https://api.ocr.space/*",
     "https://buynoworlive.vercel.app/*",
-    "https://m.ssg.com/*",
     "https://display.cjonstyle.com/*",
     "https://player.sauceflex.com/*"
   ],
@@ -21,9 +20,8 @@
   "content_scripts": [
     {
       "matches": [
-        "https://m.ssg.com/*",
         "https://m.oliveyoung.co.kr/*",
-        "https://m.gmarket.co.kr/*",
+        "https://store.ohou.se/*",
         "https://display.cjonstyle.com/*",
         "https://player.sauceflex.com/*"
       ],

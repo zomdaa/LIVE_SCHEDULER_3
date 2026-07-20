@@ -221,23 +221,39 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { id, imageUrl, rawText } = req.body || {};
-    if (!id || (!imageUrl && !rawText)) {
-      return res.status(400).json({ error: 'id and (imageUrl or rawText) are required' });
+    const { id, imageUrl, rawText, products } = req.body || {};
+    if (!id || (!imageUrl && !rawText && !products)) {
+      return res.status(400).json({ error: 'id and (imageUrl or rawText or products) are required' });
     }
 
     try {
       const cached = await kv.get('benefit:' + id);
-      if (cached) return res.status(200).json({ benefit: cached, cached: true });
+      // products가 새로 온 경우엔 캐시된 값이라도 상품 목록을 갱신한다 - 혜택
+      // 텍스트/이미지는 방송당 한 번 확정되면 안 바뀌지만, 상품 목록은 익스텐션이
+      // 같은 방송 페이지를 여러 번 방문할 때마다(가격 변동 등으로) 최신화할 가치가 있다
+      if (cached && !products) return res.status(200).json({ benefit: cached, cached: true });
     } catch (e) {}
 
     try {
-      // 상세 페이지 DOM에 혜택이 텍스트로 이미 있는 경우(예: G마켓의 sauceflex
-      // 플레이어)는 OCR 없이 그 텍스트를 바로 쓴다 - 이미지보다 훨씬 정확하다.
-      // 텍스트가 없을 때만 이미지 URL로 OCR을 돌린다
-      const raw = rawText ? String(rawText).slice(0, 2000) : await runOcr(imageUrl);
+      let raw = '';
+      let resultSource = 'text';
+      if (rawText) {
+        // 상세 페이지 DOM에 혜택이 텍스트로 이미 있는 경우(예: G마켓의 sauceflex
+        // 플레이어)는 OCR 없이 그 텍스트를 바로 쓴다 - 이미지보다 훨씬 정확하다.
+        raw = String(rawText).slice(0, 2000);
+      } else if (imageUrl) {
+        raw = (await runOcr(imageUrl)).slice(0, 2000);
+        resultSource = 'ocr';
+      } else {
+        resultSource = 'products-only';
+      }
       const parsed = parseBenefit(raw);
-      const result = { id, raw, parsed, source: rawText ? 'text' : 'ocr', cachedAt: new Date().toISOString() };
+      const result = {
+        id, raw, parsed,
+        products: Array.isArray(products) ? products.slice(0, 20) : [],
+        source: resultSource,
+        cachedAt: new Date().toISOString(),
+      };
       try {
         await kv.set('benefit:' + id, result, { ex: CACHE_EX });
       } catch (e) {}
