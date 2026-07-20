@@ -182,8 +182,16 @@ export default async function handler(req, res) {
         const misses = [];
         await Promise.all(idList.map(async (bid) => {
           const cached = await kv.get('benefit:' + bid);
-          if (cached) { results[bid] = cached; return; }
           const source = resolveApiSource(bid);
+          if (cached) {
+            results[bid] = cached;
+            // products 필드를 추가하기 전에 캐싱된(혜택 텍스트만 있는) 오래된
+            // 레코드는 products가 아예 없다(undefined) - 빈 배열([])과 구분해서,
+            // "한 번도 상품을 확인한 적 없음"인 경우만 백그라운드로 다시 채운다.
+            // 빈 배열은 이미 확인했는데 진짜 상품이 없는 경우라 다시 안 부른다
+            if (source && cached.products === undefined) misses.push({ bid, source });
+            return;
+          }
           if (source) misses.push({ bid, source });
         }));
         // 카카오/네이버 API(+OCR 폴백) 호출은 미스가 많으면(날짜를 처음 열 때 등)
@@ -208,8 +216,11 @@ export default async function handler(req, res) {
     if (!id) return res.status(400).json({ error: 'id or ids is required' });
     try {
       const cached = await kv.get('benefit:' + id);
-      if (cached) return res.status(200).json({ benefit: cached });
       const source = resolveApiSource(id);
+      if (cached) {
+        if (source && cached.products === undefined) waitUntil(fetchApiBenefit(id, source, baseUrl));
+        return res.status(200).json({ benefit: cached });
+      }
       if (source) {
         const result = await fetchApiBenefit(id, source, baseUrl);
         return res.status(200).json({ benefit: result });

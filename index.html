@@ -809,6 +809,7 @@ body { padding-bottom: 64px; }
   box-sizing: border-box;
 }
 .card.urgency-ended .main-product, .card.past .main-product { background: rgba(255,255,255,0.6); }
+.main-product-price { color: var(--primary-deep); font-weight: 800; }
 
 .badge-box {
   flex-shrink: 0;
@@ -1763,11 +1764,14 @@ async function fetchAndApplyBenefits(urls, els, isRetry) {
         return;
       }
       if (el.classList.contains('main-product')) {
-        // 이 방송의 대표(1번) 상품 이름+가격을 혜택 뱃지 아래 작게 보여준다
+        // 이 방송의 대표(1번) 상품 이름+가격을 혜택 뱃지 아래 작게 보여준다.
+        // 가격만 기존 혜택 텍스트와 같은 버건디색으로 강조한다
         const top = (b.products || [])[0];
         if (!top || !top.name) return;
-        const priceText = typeof top.price === 'number' ? ` · ${top.price.toLocaleString('ko-KR')}원` : '';
-        el.textContent = top.name + priceText;
+        const priceHtml = typeof top.price === 'number'
+          ? ` · <span class="main-product-price">${top.price.toLocaleString('ko-KR')}원</span>`
+          : '';
+        el.innerHTML = escapeHtml(top.name) + priceHtml;
         el.style.display = '';
         return;
       }
@@ -2221,6 +2225,10 @@ function daysFromNow(d) {
 
 function escapeAttr(str) {
   return String(str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function escapeHtml(str) {
+  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function formatVerdictBody(text) {
