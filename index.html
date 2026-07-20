@@ -793,6 +793,15 @@ body { padding-bottom: 64px; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.main-product {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--mute);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .badge-box {
   flex-shrink: 0;
@@ -1722,7 +1731,7 @@ async function loadLikeCounts() {
 // 크롬 익스텐션이 방송 상세 페이지에서 OCR로 읽어둔 혜택 정보를 카드에 표시한다.
 // GET은 캐시 조회뿐이라 (OCR을 직접 트리거하지 않음) 카드 수만큼 불러도 저렴하다
 async function loadBenefits() {
-  const els = document.querySelectorAll('.benefit[data-benefit-url]');
+  const els = document.querySelectorAll('.benefit[data-benefit-url], .main-product[data-benefit-url]');
   if (!els.length) return;
   const urls = [...new Set([...els].map(el => el.dataset.benefitUrl))];
   await fetchAndApplyBenefits(urls, els);
@@ -1738,10 +1747,23 @@ async function fetchAndApplyBenefits(urls, els, isRetry) {
     const data = await r.json();
     const benefits = data.benefits || {};
     const missed = [];
+    const seenMiss = new Set();
     els.forEach(el => {
       const url = el.dataset.benefitUrl;
       const b = benefits[url];
-      if (!b) { missed.push(url); return; }
+      if (!b) {
+        if (!seenMiss.has(url)) { missed.push(url); seenMiss.add(url); }
+        return;
+      }
+      if (el.classList.contains('main-product')) {
+        // 이 방송의 대표(1번) 상품 이름+가격을 혜택 뱃지 아래 작게 보여준다
+        const top = (b.products || [])[0];
+        if (!top || !top.name) return;
+        const priceText = typeof top.price === 'number' ? ` · ${top.price.toLocaleString('ko-KR')}원` : '';
+        el.textContent = top.name + priceText;
+        el.style.display = '';
+        return;
+      }
       const parsed = b.parsed;
       if (!parsed) return;
       const parts = [];
@@ -1759,7 +1781,7 @@ async function fetchAndApplyBenefits(urls, els, isRetry) {
     // 레이트리밋(429)을 계속 유발하는 걸 발견했다
     if (missed.length && !isRetry) {
       setTimeout(() => {
-        const stillHere = [...document.querySelectorAll('.benefit[data-benefit-url]')]
+        const stillHere = [...document.querySelectorAll('.benefit[data-benefit-url], .main-product[data-benefit-url]')]
           .filter(el => missed.includes(el.dataset.benefitUrl));
         if (stillHere.length) fetchAndApplyBenefits(missed, stillHere, true);
       }, 4000);
@@ -2275,7 +2297,8 @@ function upcomingCard(item, idx) {
         <span class="platform">${item.platform || '라이브'}</span>
         <div class="title">${item.title}</div>
         ${item.channel ? `<div class="channel">${escapeAttr(item.channel)}</div>` : ''}
-        ${benefitKeyFor(item) ? `<div class="benefit" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>` : ''}
+        ${benefitKeyFor(item) ? `<div class="benefit" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>
+        <div class="main-product" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>` : ''}
       </div>
       ${likeHtml}
     </a>`;
@@ -2305,7 +2328,8 @@ function pastCard(item) {
       <div class="info">
         <span class="platform">${item.platform}</span>
         <div class="title">${item.title}</div>
-        ${benefitKeyFor(item) ? `<div class="benefit" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>` : ''}
+        ${benefitKeyFor(item) ? `<div class="benefit" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>
+        <div class="main-product" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>` : ''}
       </div>
       ${likeHtml}
     </a>`;
