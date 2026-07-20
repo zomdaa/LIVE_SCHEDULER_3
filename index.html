@@ -2530,7 +2530,10 @@ async function doSearch() {
     resultEl.innerHTML = html;
     loadLikeCounts();
     loadBenefits();
-    loadPriceTrend(upcoming, past);
+    // 지난 방송이 다 갖춰진 뒤(!searchPending)에만 계산한다 - 예정 방송만 있는
+    // 빠른 1차 렌더에서도 매번 호출하면, 그 요청이 늦게 끝날 경우 이미 완성된
+    // 2차 렌더 결과를 오래된(불완전한) 데이터로 덮어써버리는 경쟁 상태가 생긴다
+    if (!searchPending) loadPriceTrend(upcoming, past);
   }
 
   try {
