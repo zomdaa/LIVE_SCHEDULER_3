@@ -2311,9 +2311,7 @@ function upcomingCard(item, idx) {
       <div class="info">
         <span class="platform">${item.platform || '라이브'}</span>
         <div class="title">${item.title}</div>
-        ${item.channel ? `<div class="channel">${escapeAttr(item.channel)}</div>` : ''}
-        ${benefitKeyFor(item) ? `<div class="benefit" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>
-        <div class="main-product" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>` : ''}
+        ${benefitKeyFor(item) ? `<div class="main-product" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>` : ''}
       </div>
       ${likeHtml}
     </a>`;
@@ -2343,8 +2341,7 @@ function pastCard(item) {
       <div class="info">
         <span class="platform">${item.platform}</span>
         <div class="title">${item.title}</div>
-        ${benefitKeyFor(item) ? `<div class="benefit" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>
-        <div class="main-product" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>` : ''}
+        ${benefitKeyFor(item) ? `<div class="main-product" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>` : ''}
       </div>
       ${likeHtml}
     </a>`;
