@@ -2438,7 +2438,7 @@ async function loadLowestPrice(keyword) {
 // 최저/평균/최고를 계산하고, 다음 예정 방송에 이미 가격이 올라와 있으면 그것도
 // 같이 보여준다. 데이터가 익스텐션이 방문한 방송에만 쌓이는 구조라 최소 2개
 // 이상 모였을 때만 보여준다 (1개뿐이면 "최저=평균=최고"라 보여줄 의미가 없음)
-async function loadPriceTrend(upcoming, past) {
+async function loadPriceTrend(upcoming, past, isRetry) {
   const section = document.getElementById('priceTrendSection');
   const statsEl = document.getElementById('priceTrendStats');
   const items = [...upcoming, ...past];
@@ -2457,7 +2457,13 @@ async function loadPriceTrend(upcoming, past) {
     };
 
     const pastPrices = past.map(cheapestPrice).filter(p => p !== null);
-    if (pastPrices.length < 2) { section.classList.remove('show'); return; }
+    if (pastPrices.length < 2) {
+      section.classList.remove('show');
+      // 처음 보는 방송들이면 방금 요청에서 서버가 백그라운드로 막 채우기 시작했을
+      // 수 있다 - 혜택 뱃지처럼 딱 한 번만 잠깐 기다렸다 다시 계산해본다
+      if (!isRetry) setTimeout(() => loadPriceTrend(upcoming, past, true), 4000);
+      return;
+    }
 
     const min = Math.min(...pastPrices);
     const max = Math.max(...pastPrices);
