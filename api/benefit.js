@@ -1,16 +1,23 @@
 import { kv } from '@vercel/kv';
 import { waitUntil } from '@vercel/functions';
 
-// 방송 상세 페이지의 "혜택" 정보를 캐싱한다. 카드에 바로 붙는 혜택 뱃지는
-// 세 가지 경로로 채워진다:
-// 1) API: 네이버/카카오는 crawl.js의 DETAIL_FETCHERS(action=detail)가 이미
-//    구조화된 혜택 텍스트를 정식 API로 받아온다 - 여기선 그 엔드포인트를
-//    서버 대 서버로 그대로 재사용한다 (크롬 확장이나 OCR 없이 전체 방송에
-//    자동 적용됨). resolveApiSource()가 카드 url에서 platform/id를 역추출한다.
-// 2) 텍스트: SSG/올리브영/G마켓/CJ온스타일처럼 별도 API가 없는 곳은 크롬
-//    익스텐션이 방송 상세 페이지에서 혜택 텍스트를 DOM에서 직접 찾아 여기로
-//    POST한다 (rawText).
-// 3) OCR: 혜택이 이미지로만 존재하면 익스텐션이 이미지 URL을 POST하고(imageUrl)
+// 방송 상세 페이지의 "혜택" + "가격(상품)" 정보를 캐싱한다. 이 둘을 같은
+// 캐시 엔트리에 같이 넣는 이유는, 카카오/네이버/11번가/SSG는 어차피 같은
+// 상세 조회 한 번으로 혜택과 상품 가격이 동시에 나오기 때문 - 따로 캐싱하면
+// 같은 외부 API를 두 번 부르게 된다.
+// 카드에 바로 붙는 혜택 뱃지 + 가격 추이 데이터는 네 가지 경로로 채워진다:
+// 1) API: 네이버/카카오/11번가는 crawl.js의 DETAIL_FETCHERS(action=detail)가
+//    이미 구조화된 혜택 텍스트와 products(가격 포함)를 정식 API로 받아온다 -
+//    여기선 그 엔드포인트를 서버 대 서버로 그대로 재사용한다 (크롬 확장이나
+//    OCR 없이 전체 방송에 자동 적용됨). resolveApiSource()가 카드 url에서
+//    platform/id를 역추출한다.
+// 2) SSG 전용: m.ssg.com 상세 페이지는 WAF 없이 서버에서 바로 fetch되고,
+//    상품 가격이 HTML 안에 disp_cart_data라는 JSON으로 그대로 박혀있다
+//    (fetchSsgProducts). 혜택은 여전히 배너 이미지 하나뿐이라 OCR로 읽는다.
+// 3) 텍스트: 올리브영/G마켓/오늘의집처럼 별도 API가 없는 곳은 크롬 익스텐션이
+//    방송 상세 페이지에서 혜택/상품 텍스트를 DOM에서 직접 찾아 여기로
+//    POST한다 (rawText / products).
+// 4) OCR: 혜택이 이미지로만 존재하면 익스텐션이 이미지 URL을 POST하고(imageUrl)
 //    OCR.space로 읽는다. 텍스트가 있을 땐 이미지+OCR보다 훨씬 정확하므로
 //    rawText가 항상 imageUrl보다 우선이다.
 // 어느 경로든 한 번 채워지면 캐시에 저장해 같은 방송은 다시 안 부른다.
@@ -41,35 +48,83 @@ function resolveApiSource(id) {
   if (m) return { platform: 'kakao', detailId: m[1] };
   m = url.match(/naver\.com\/lives\/(\d+)/);
   if (m) return { platform: 'naver', detailId: m[1] };
+  m = url.match(/11st\.co\.kr\/page\/live11\/detail\?broadcastNo=(\d+)/);
+  if (m) return { platform: '11st', detailId: m[1] };
+  if (/m\.ssg\.com\/ssgLive\/detail\.ssg/.test(url)) return { platform: 'ssg', detailId: url };
   return null;
 }
 
+// SSG 상세 페이지(m.ssg.com/ssgLive/detail.ssg)는 WAF 없이 서버에서 바로
+// fetch된다 - 상품 가격은 <span class="disp_cart_data">{...json...}</span>
+// 안에 itemNm/displayPrc로 그대로 박혀있고, 혜택은 여전히 배너 이미지 하나뿐이라
+// (sui.ssgcdn.com/cmpt/banner/...) 그 URL만 뽑아서 기존 OCR 경로로 넘긴다
+async function fetchSsgProducts(url) {
+  const r = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' },
+  });
+  if (!r.ok) return { products: [], bannerUrl: null };
+  const html = await r.text();
+
+  const products = [];
+  const seenItemIds = new Set();
+  const cartRe = /class="disp_cart_data"[^>]*>(\{[^<]*\})<\/span>/g;
+  let m;
+  while ((m = cartRe.exec(html)) && products.length < 20) {
+    try {
+      const d = JSON.parse(m[1]);
+      if (!d.itemNm || !d.displayPrc || seenItemIds.has(d.itemId)) continue;
+      seenItemIds.add(d.itemId);
+      products.push({
+        name: d.itemNm,
+        price: Number(d.displayPrc) || null,
+        discountRate: null,
+        image: null,
+        url: d.itemLnkd || '',
+      });
+    } catch (e) {}
+  }
+
+  const bannerMatch = html.match(/https:\/\/sui\.ssgcdn\.com\/cmpt\/banner\/[^"'\s)]+/);
+  return { products, bannerUrl: bannerMatch ? bannerMatch[0] : null };
+}
+
 // crawl.js의 기존 상세 API(action=detail)를 서버 대 서버로 재사용한다 -
-// 카카오/네이버 API 호출 로직을 여기 따로 복제하지 않고, 이미 캐싱/레이트리밋까지
-// 갖춰진 그 엔드포인트를 그대로 호출한다
+// 카카오/네이버/11번가 API 호출 로직을 여기 따로 복제하지 않고, 이미
+// 캐싱/레이트리밋까지 갖춰진 그 엔드포인트를 그대로 호출한다. SSG는 crawl.js에
+// 없는 별도 경로라 fetchSsgProducts로 직접 처리한다
 async function fetchApiBenefit(id, source, baseUrl) {
   try {
-    const r = await fetch(`${baseUrl}/api/crawl?action=detail&platform=${source.platform}&id=${source.detailId}`);
-    if (!r.ok) return null;
-    const data = await r.json();
-    const benefits = data.detail?.benefits || [];
+    let benefits = [];
+    let benefitImages = [];
+    let products = [];
+
+    if (source.platform === 'ssg') {
+      const ssgData = await fetchSsgProducts(source.detailId);
+      products = ssgData.products;
+      benefitImages = ssgData.bannerUrl ? [ssgData.bannerUrl] : [];
+    } else {
+      const r = await fetch(`${baseUrl}/api/crawl?action=detail&platform=${source.platform}&id=${source.detailId}`);
+      if (!r.ok) return null;
+      const data = await r.json();
+      benefits = data.detail?.benefits || [];
+      benefitImages = data.detail?.benefitImages || [];
+      products = data.detail?.products || [];
+    }
+
     let raw = '';
-    let resultSource = 'api';
+    let resultSource = source.platform === 'ssg' ? 'ssg' : 'api';
     if (benefits.length) {
       raw = benefits.join(' · ').slice(0, 2000);
-    } else {
-      // 네이버는 혜택이 텍스트가 아니라 배너 이미지로만 있는 경우가 많다
-      // (benefits는 비어있고 benefitImages만 채워짐) - 이미 있는 OCR 경로를 재사용한다
-      const bannerUrl = data.detail?.benefitImages?.[0];
-      if (bannerUrl) {
-        raw = (await runOcr(bannerUrl)).slice(0, 2000);
-        resultSource = 'api-ocr';
-      }
+    } else if (benefitImages[0]) {
+      // 네이버/SSG는 혜택이 텍스트가 아니라 배너 이미지로만 있는 경우가 많다 -
+      // 이미 있는 OCR 경로를 재사용한다
+      raw = (await runOcr(benefitImages[0])).slice(0, 2000);
+      resultSource += '-ocr';
       // bannerUrl도 없으면 진짜 혜택이 없는 방송 - raw는 빈 채로 "없음"을 캐싱해서
       // 매번 다시 조회하지 않게 한다 (뱃지는 어차피 parsed가 비면 안 뜬다)
     }
     const parsed = parseBenefit(raw);
-    const result = { id, raw, parsed, source: resultSource, cachedAt: new Date().toISOString() };
+    const result = { id, raw, parsed, products, source: resultSource, cachedAt: new Date().toISOString() };
     try { await kv.set('benefit:' + id, result, { ex: CACHE_EX }); } catch (e) {}
     return result;
   } catch (e) {
