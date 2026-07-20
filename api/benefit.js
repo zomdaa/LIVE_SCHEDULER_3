@@ -41,12 +41,15 @@ function parseBenefit(rawText) {
 
 // 카드에 저장된 item.url만으로 어느 플랫폼의 어떤 방송인지 되짚어낸다 -
 // crawl.js가 스케줄을 만들 때 쓰는 url 포맷(카카오: /live/{id}, 네이버:
-// /lives/{id})과 정확히 맞아야 하므로 실제 캐시 데이터로 검증된 패턴만 쓴다
+// /lives/{id})과 정확히 맞아야 하므로 실제 캐시 데이터로 검증된 패턴만 쓴다.
+// /api/search(라방바 과거 방송)가 주는 링크는 "/lives/"가 아니라 "/replays/"인데,
+// 실제로 같은 숫자 id로 crawl.js의 상세 API가 그대로 응답하는 걸 확인했다 -
+// 그래서 지난 방송(가격 추이의 주 데이터 소스)도 여기서 같이 잡히게 추가한다
 function resolveApiSource(id) {
   const url = String(id || '');
   let m = url.match(/shoppinglive\.kakao\.com\/live\/(\d+)/);
   if (m) return { platform: 'kakao', detailId: m[1] };
-  m = url.match(/naver\.com\/lives\/(\d+)/);
+  m = url.match(/naver\.com\/(?:lives|replays)\/(\d+)/);
   if (m) return { platform: 'naver', detailId: m[1] };
   m = url.match(/11st\.co\.kr\/page\/live11\/detail\?broadcastNo=(\d+)/);
   if (m) return { platform: '11st', detailId: m[1] };
