@@ -452,6 +452,12 @@ body { padding-bottom: 64px; }
   margin-top: 2px;
   margin-bottom: 6px;
 }
+.verdict-benefit {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-deep);
+  margin-bottom: 6px;
+}
 .verdict-product {
   font-size: 12px;
   font-weight: 600;
@@ -1153,17 +1159,18 @@ footer {
 
   <div class="verdict" id="verdict">
     <div class="verdict-tail"></div>
-    <div class="verdict-label">⚖️ 판결 카드</div>
+    <div class="verdict-label">✋ 잠깐!</div>
     <div class="verdict-title" id="verdictTitle"></div>
     <div class="verdict-text" id="verdictText"></div>
+    <div class="verdict-broadcast-meta" id="verdictBroadcastMeta" style="display:none"></div>
     <div class="verdict-savings" id="verdictSavings" style="display:none"></div>
+    <div class="verdict-benefit" id="verdictBenefit" style="display:none"></div>
     <div class="verdict-product" id="verdictProduct" style="display:none"></div>
     <div class="verdict-price-row" id="verdictPriceRow" style="display:none">
       <span class="verdict-price-now" id="verdictPriceNow"></span>
       <span class="verdict-price-arrow">→</span>
       <span class="verdict-price-est" id="verdictPriceEst"></span>
     </div>
-    <div class="verdict-broadcast-meta" id="verdictBroadcastMeta" style="display:none"></div>
   </div>
 
   <div class="lowest-price-section" id="lowestPriceSection">
@@ -1328,7 +1335,7 @@ function goHome() {
 // 새 검색을 시작할 때마다 반드시 먼저 숨겨야 이전 키워드의 가격이 잠깐이라도
 // 새 결과 위에 남아있지 않는다
 function hideVerdictPriceParts() {
-  ['verdictSavings', 'verdictProduct', 'verdictPriceRow', 'verdictBroadcastMeta'].forEach(id => {
+  ['verdictSavings', 'verdictBenefit', 'verdictProduct', 'verdictPriceRow', 'verdictBroadcastMeta'].forEach(id => {
     document.getElementById(id).style.display = 'none';
   });
 }
@@ -2463,29 +2470,49 @@ async function loadJudgement(upcoming, past, myEpoch, naverPricePromise) {
   const days = Math.max(0, daysFromNow(parseLabangDate(nextBcast.start)));
   const savings = currentPrice - broadcastPrice;
 
-  verdictTitle.textContent = broadcastPrice < currentPrice
-    ? (days === 0 ? '오늘 방송 후 사세요!' : `${days}일 기다리세요!`)
-    : '지금 사도 괜찮아요!';
+  if (broadcastPrice < currentPrice) {
+    verdictTitle.textContent = days === 0 ? '오늘 방송 후 사세요!'
+      : days === 1 ? '내일 라이브 방송이 있어요!'
+      : `${days}일 후 라이브 방송이 있어요!`;
+  } else {
+    verdictTitle.textContent = '지금 사도 괜찮아요!';
+  }
   verdictText.innerHTML = '';
 
-  if (savings > 0) {
-    const savingsEl = document.getElementById('verdictSavings');
-    savingsEl.textContent = `💰 약 ${fmt(savings)} 아낄 수 있어요`;
-    savingsEl.style.display = '';
-  }
-
-  const productEl = document.getElementById('verdictProduct');
-  productEl.textContent = `🛍️ ${productName} 기준`;
-  productEl.style.display = '';
-
-  document.getElementById('verdictPriceNow').textContent = fmt(currentPrice);
-  document.getElementById('verdictPriceEst').textContent = fmt(broadcastPrice);
-  document.getElementById('verdictPriceRow').style.display = 'flex';
-
+  // 방송 일시/플랫폼 — 판결 문구 바로 아래
   const dt = fmtDate(parseLabangDate(nextBcast.start));
   const metaEl = document.getElementById('verdictBroadcastMeta');
   metaEl.textContent = `📺 ${dt.month}/${dt.day} ${nextBcast.platform} · D-${days}`;
   metaEl.style.display = '';
+
+  // 다음 방송 혜택(할인/쿠폰/사은품)
+  const nextBenefitKey = benefitKeyFor(nextBcast);
+  const nextParsed = nextBenefitKey && benefits[nextBenefitKey]?.parsed;
+  if (nextParsed) {
+    const parts = [];
+    if (nextParsed.discount) parts.push(`${nextParsed.discount} 할인`);
+    if (nextParsed.coupon) parts.push(nextParsed.coupon);
+    if (nextParsed.gift) parts.push(nextParsed.gift);
+    if (parts.length) {
+      const benefitEl = document.getElementById('verdictBenefit');
+      benefitEl.textContent = `🎁 ${parts.join(' · ')}`;
+      benefitEl.style.display = '';
+    }
+  }
+
+  if (savings > 0) {
+    const savingsEl = document.getElementById('verdictSavings');
+    savingsEl.textContent = `💰 약 ${fmt(savings)} 저렴해요`;
+    savingsEl.style.display = '';
+
+    const productEl = document.getElementById('verdictProduct');
+    productEl.textContent = `🛍️ ${productName} 기준`;
+    productEl.style.display = '';
+
+    document.getElementById('verdictPriceNow').textContent = fmt(currentPrice);
+    document.getElementById('verdictPriceEst').textContent = fmt(broadcastPrice);
+    document.getElementById('verdictPriceRow').style.display = 'flex';
+  }
 }
 
 // 예정 방송을 먼저 보여준 뒤 지난 방송을 나중에 이어붙이는 구조라, 그 사이에
