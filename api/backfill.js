@@ -14,7 +14,11 @@ import { getSupabase, saveBroadcasts } from '../lib/supabase.js';
 export const config = { maxDuration: 60 };
 
 const LOCK_KEY = 'backfill-lock';
-const LOCK_TTL = 20 * 60; // 20분
+// 락은 두 단계: 실행 중 중복 방지용 짧은 가드(실행은 최대 60초) + 완료 후 쿨다운.
+// 처음엔 취득 시 20분을 걸었는데, 실행이 실패해도 20분간 재시도가 전부 막혀서
+// 정작 백필을 완료할 수 없는 문제가 있었다
+const LOCK_INFLIGHT_TTL = 2 * 60; // 실행 가드 2분
+const LOCK_COOLDOWN_TTL = 5 * 60; // 완료 후 쿨다운 5분
 const MAX_DAYS = 90;
 const RETENTION_DAYS = 90; // 3개월 보관
 const UPSERT_CHUNK = 1000;
@@ -26,9 +30,9 @@ export default async function handler(req, res) {
   const authed = Boolean(secret && secret === process.env.INGEST_SECRET);
   if (!authed) {
     try {
-      const locked = await kv.set(LOCK_KEY, new Date().toISOString(), { nx: true, ex: LOCK_TTL });
+      const locked = await kv.set(LOCK_KEY, new Date().toISOString(), { nx: true, ex: LOCK_INFLIGHT_TTL });
       if (locked !== 'OK' && locked !== true) {
-        return res.status(429).json({ error: '백필이 최근에 실행됐어요. 20분 후 다시 시도해주세요.' });
+        return res.status(429).json({ error: '백필이 최근에 실행됐어요. 잠시 후 다시 시도해주세요.' });
       }
     } catch (e) {
       // KV가 죽어있으면 스로틀을 보장할 수 없으니 비인증 호출은 거부
@@ -117,6 +121,11 @@ export default async function handler(req, res) {
         await kv.set('backfill:lastRun', new Date().toISOString());
       } catch (e) {}
     }
+
+    // 실행이 끝났으니 인플라이트 가드를 쿨다운으로 교체 - 5분에 1회만 허용
+    try {
+      await kv.set(LOCK_KEY, new Date().toISOString(), { ex: LOCK_COOLDOWN_TTL });
+    } catch (e) {}
 
     return res.status(200).json({
       ok: errors.length === 0,
