@@ -1,5 +1,8 @@
 {
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" }
+  ],
+  "crons": [
+    { "path": "/api/backfill?days=3", "schedule": "0 16 * * *" }
   ]
 }
