@@ -499,6 +499,15 @@ body { padding-bottom: 64px; }
   border-radius: 12px;
   padding: 14px;
 }
+.price-trend-product {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .price-trend-row {
   display: flex;
   justify-content: space-around;
@@ -2422,8 +2431,8 @@ async function loadLowestPrice(keyword) {
 
 // "지금 검색한 브랜드(제품)의 최저가"(loadLowestPrice)는 네이버쇼핑 전체에서
 // 지금 이 순간 가장 싼 곳 하나를 보여주는 것이고, 이건 그거랑 다르게 "라이브
-// 방송에서는 보통 얼마에 풀렸는지"를 보여준다 - 지난 방송들의 상품 가격을 모아
-// 최저/평균/최고를 계산하고, 다음 예정 방송에 이미 가격이 올라와 있으면 그것도
+// 방송에서는 보통 얼마에 풀렸는지"를 보여준다 - 지난 방송들의 1번(대표) 상품
+// 가격을 모아 최저/평균/최고를 계산하고, 다음 예정 방송에 가격이 올라와 있으면
 // 같이 보여준다. 데이터가 익스텐션이 방문한 방송에만 쌓이는 구조라 최소 2개
 // 이상 모였을 때만 보여준다 (1개뿐이면 "최저=평균=최고"라 보여줄 의미가 없음)
 async function loadPriceTrend(upcoming, past, isRetry) {
@@ -2438,13 +2447,16 @@ async function loadPriceTrend(upcoming, past, isRetry) {
     const data = await r.json();
     const benefits = data.benefits || {};
 
-    const cheapestPrice = (item) => {
-      const products = benefits[benefitKeyFor(item)]?.products || [];
-      const prices = products.map(p => p.price).filter(p => typeof p === 'number' && p > 0);
-      return prices.length ? Math.min(...prices) : null;
+    // 방송의 1번(대표) 상품만 기준으로 삼는다 - 여러 상품 중 최저가를 섞으면
+    // 어떤 상품끼리 비교하는지 알 수 없어져서, 카드에 보여주는 대표 상품과
+    // 같은 기준으로 통일
+    const mainProduct = (item) => {
+      const top = (benefits[benefitKeyFor(item)]?.products || [])[0];
+      return (top && typeof top.price === 'number' && top.price > 0) ? top : null;
     };
 
-    const pastPrices = past.map(cheapestPrice).filter(p => p !== null);
+    const pastMains = past.map(mainProduct).filter(Boolean);
+    const pastPrices = pastMains.map(p => p.price);
     if (pastPrices.length < 2) {
       section.classList.remove('show');
       // 처음 보는 방송들이면 방금 요청에서 서버가 백그라운드로 막 채우기 시작했을
@@ -2458,19 +2470,27 @@ async function loadPriceTrend(upcoming, past, isRetry) {
     const avg = Math.round(pastPrices.reduce((a, b) => a + b, 0) / pastPrices.length);
     const fmt = (n) => n.toLocaleString('ko-KR') + '원';
 
+    // 어떤 상품 기준인지 보여준다 - past는 최신순이라 가장 최근 방송의 대표 상품
+    const refName = pastMains[0].name || '';
+    const shorten = (name) => name.length > 24 ? name.slice(0, 24) + '…' : name;
+
     let html = `
+      ${refName ? `<div class="price-trend-product">📦 ${escapeHtml(refName)}</div>` : ''}
       <div class="price-trend-row">
         <div class="price-trend-stat"><div class="price-trend-label">최저</div><div class="price-trend-value low">${fmt(min)}</div></div>
         <div class="price-trend-stat"><div class="price-trend-label">평균</div><div class="price-trend-value">${fmt(avg)}</div></div>
         <div class="price-trend-stat"><div class="price-trend-label">최고</div><div class="price-trend-value">${fmt(max)}</div></div>
       </div>`;
 
-    const nextItem = upcoming.find(item => cheapestPrice(item) !== null);
+    const nextItem = upcoming.find(item => mainProduct(item));
     if (nextItem) {
+      const np = mainProduct(nextItem);
       const dt = fmtDate(parseLabangDate(nextItem.start));
-      html += `<div class="price-trend-next">다음 방송(${dt.month}/${dt.day}) 예상가 ${fmt(cheapestPrice(nextItem))}</div>`;
+      // 다음 방송의 대표 상품이 기준 상품과 다르면 이름도 같이 보여준다
+      const nameHtml = np.name && np.name !== refName ? ` ${escapeHtml(shorten(np.name))}` : '';
+      html += `<div class="price-trend-next">다음 방송(${dt.month}/${dt.day})${nameHtml} 예상가 ${fmt(np.price)}</div>`;
     }
-    html += `<div class="price-trend-note">최근 ${pastPrices.length}회 라이브 방송 기준</div>`;
+    html += `<div class="price-trend-note">최근 ${pastPrices.length}회 라이브 1번(대표) 상품 가격 기준</div>`;
 
     statsEl.innerHTML = html;
     section.classList.add('show');
