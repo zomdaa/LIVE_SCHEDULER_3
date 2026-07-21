@@ -110,6 +110,14 @@ export default async function handler(req, res) {
       }
     } catch (e) {}
 
+    // 백필 성공 시각 기록 - search.js가 이걸 보고 "Supabase에 없으면 라방바에도
+    // 없다"고 판단해 결과 0건일 때 라방바 60일 스캔을 생략한다
+    if (saved > 0 && errors.length === 0) {
+      try {
+        await kv.set('backfill:lastRun', new Date().toISOString());
+      } catch (e) {}
+    }
+
     return res.status(200).json({
       ok: errors.length === 0,
       days,
