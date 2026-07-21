@@ -9,6 +9,36 @@ export const config = { maxDuration: 60 };
 const CONCURRENCY_KEY = 'active-searches';
 const MAX_CONCURRENT = 10;
 
+// 라방바 리포트 페이지에서 실제 플랫폼(네이버/카카오/G마켓 등) URL을 뽑아낸다.
+// Supabase 경로와 라방바 폴백 경로 양쪽에서 쓴다 - 폴백은 항상 신선한 라방바
+// 응답이라 원래도 이 해석을 거쳤지만, Supabase 경로는 백필 때 이 호출을
+// 생략하고 리포트 페이지 URL을 그대로 저장해뒀기 때문에(90일치를 방송당
+// 개별 조회하면 타임아웃) 검색 시점에 필요하면 여기서 채운다.
+async function getRealUrl(labangId) {
+  try {
+    const r = await fetch('https://live.ecomm-data.com/report/labang/' + labangId, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html',
+        'Accept-Language': 'ko-KR,ko;q=0.9',
+      },
+    });
+    const html = await r.text();
+    const infoMatch = html.match(/"labang_url_info":"([^"]+)"/);
+    const replayMatch = html.match(/"labang_url_replay":"([^"]+)"/);
+    const liveMatch = html.match(/"labang_url_live":"([^"]+)"/);
+    const url = (infoMatch && infoMatch[1]) || (replayMatch && replayMatch[1]) || (liveMatch && liveMatch[1]) || null;
+    return url ? url.replace(/\\u0026/g, '&') : null;
+  } catch {
+    return null;
+  }
+}
+
+// Supabase에 저장된 URL이 아직 해석 전(라방바 리포트 페이지)인지 판별
+function isUnresolvedUrl(url) {
+  return !url || url.includes('live.ecomm-data.com/report/labang/');
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -67,14 +97,36 @@ export default async function handler(req, res) {
       const { data, error } = await query;
       if (!error && Array.isArray(data)) {
         if (data.length > 0) {
-          const past = data.map(row => ({
-            id: row.labang_id,
-            title: row.title,
-            platform: row.platform,
-            start: tsToKstLocal(row.start_at),
-            end: tsToKstLocal(row.end_at),
-            url: row.url,
+          // 백필로 들어온 행은 라방바 리포트 페이지 URL을 그대로 갖고 있어서
+          // /api/benefit이 상품/가격을 못 뽑는다(가격 트렌드 섹션이 안 뜨는
+          // 원인). 여기서 찾은 최대 3건뿐이니 그 자리에서 실제 URL로 해석해
+          // 응답하고, Supabase에도 백그라운드로 채워 넣어 다음번엔 바로 나가게 한다.
+          const past = await Promise.all(data.map(async (row) => {
+            let url = row.url;
+            let resolved = false;
+            if (isUnresolvedUrl(url)) {
+              const realUrl = await getRealUrl(row.labang_id);
+              if (realUrl) { url = realUrl; resolved = true; }
+            }
+            return {
+              id: row.labang_id,
+              title: row.title,
+              platform: row.platform,
+              start: tsToKstLocal(row.start_at),
+              end: tsToKstLocal(row.end_at),
+              url,
+              _resolved: resolved,
+            };
           }));
+
+          const toWriteBack = past.filter(p => p._resolved);
+          if (toWriteBack.length) {
+            try {
+              waitUntil(saveBroadcasts(toWriteBack, 'labangba').catch(() => {}));
+            } catch (e) {}
+          }
+          past.forEach(p => { delete p._resolved; });
+
           const responseBody = { past, total: past.length, keyword: cleanKeyword, source: 'supabase' };
           try {
             await kv.set(cacheKey, responseBody, { ex: 7200 });
@@ -124,26 +176,6 @@ export default async function handler(req, res) {
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     dates.push(yy + mm + dd);
-  }
-
-  async function getRealUrl(labangId) {
-    try {
-      const r = await fetch('https://live.ecomm-data.com/report/labang/' + labangId, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'text/html',
-          'Accept-Language': 'ko-KR,ko;q=0.9',
-        },
-      });
-      const html = await r.text();
-      const infoMatch = html.match(/"labang_url_info":"([^"]+)"/);
-      const replayMatch = html.match(/"labang_url_replay":"([^"]+)"/);
-      const liveMatch = html.match(/"labang_url_live":"([^"]+)"/);
-      const url = (infoMatch && infoMatch[1]) || (replayMatch && replayMatch[1]) || (liveMatch && liveMatch[1]) || null;
-      return url ? url.replace(/\\u0026/g, '&') : null;
-    } catch {
-      return null;
-    }
   }
 
   try {
