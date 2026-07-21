@@ -159,26 +159,25 @@ main {
   position: relative;
 }
 
-body { padding-bottom: 64px; }
+body { padding-bottom: 100px; }
 
 .bottom-nav {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
   z-index: 50;
-  max-width: 720px;
-  margin: 0 auto;
   display: flex;
+  width: max-content;
   background: rgba(255,255,255,0.42);
   backdrop-filter: blur(48px) saturate(200%) brightness(1.06);
   -webkit-backdrop-filter: blur(48px) saturate(200%) brightness(1.06);
   border: none;
-  border-radius: 20px 20px 0 0;
+  border-radius: 9999px;
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.9),
-    0 -12px 40px rgba(0,0,0,0.07);
-  padding-bottom: env(safe-area-inset-bottom, 0);
+    0 4px 24px rgba(0,0,0,0.12),
+    0 1px 6px rgba(0,0,0,0.07);
   overflow: hidden;
 }
 .bottom-nav::before {
@@ -191,13 +190,12 @@ body { padding-bottom: 64px; }
   z-index: 0;
 }
 .bottom-nav-item {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  padding: 8px 0 6px;
+  padding: 10px 22px 8px;
   background: none;
   border: none;
   cursor: pointer;
@@ -794,6 +792,8 @@ body { padding-bottom: 64px; }
 }
 
 .vline { width: 1px; align-self: stretch; flex-shrink: 0; opacity: 0.2; background: currentColor; }
+.info-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
+.date-tag { font-size: 11px; font-weight: 700; opacity: 0.72; margin-left: auto; white-space: nowrap; }
 
 .info { flex: 1; min-width: 0; }
 .platform {
@@ -1546,14 +1546,11 @@ async function loadMyPage() {
       const dt = fmtDate(new Date(r.startAt));
       return `
       <a class="card urgency-3" href="${escapeAttr(r.url || '#')}" target="_blank" rel="noopener">
-        <div class="date-col">
-          <div class="date-month">🔔</div>
-          <div class="date-day">${dt.month}/${dt.day}</div>
-          <div class="date-time">${dt.time}</div>
-        </div>
-        <div class="vline"></div>
         <div class="info">
-          <span class="platform">${escapeAttr(r.platform || '')}</span>
+          <div class="info-top">
+            <span class="platform">${escapeAttr(r.platform || '')}</span>
+            <span class="date-tag">🔔 ${dt.month}/${dt.day} ${dt.time}</span>
+          </div>
           <div class="title">${escapeAttr(r.title || '')}</div>
         </div>
       </a>`;
@@ -1597,14 +1594,11 @@ async function loadMyPage() {
       const likeId = item.id || '';
       return `
       <a class="card ${urgency}" href="${escapeAttr(item.url || '#')}" target="_blank" rel="noopener">
-        <div class="date-col">
-          <div class="date-month">${dDayLabel}</div>
-          <div class="date-day">${dt.month}/${dt.day}</div>
-          <div class="date-time">${dt.time}</div>
-        </div>
-        <div class="vline"></div>
         <div class="info">
-          <span class="platform">${escapeAttr(item.platform || '')}</span>
+          <div class="info-top">
+            <span class="platform">${escapeAttr(item.platform || '')}</span>
+            <span class="date-tag">${dDayLabel} · ${dt.month}/${dt.day} ${dt.time}</span>
+          </div>
           <div class="title">${escapeAttr(item.title || '')}</div>
         </div>
         ${likeId ? `
@@ -2418,14 +2412,11 @@ function upcomingCard(item, idx) {
 
   return `
     <a class="card ${urgency}" href="${item.url || '#'}" target="_blank" rel="noopener" onclick="return handleCardClick(event, ${idx})">
-      <div class="date-col">
-        <div class="date-month">${dDayLabel}</div>
-        <div class="date-day">${dt.month}/${dt.day}</div>
-        <div class="date-time">${dt.time}</div>
-      </div>
-      <div class="vline"></div>
       <div class="info">
-        <span class="platform">${item.platform || '라이브'}</span>
+        <div class="info-top">
+          <span class="platform">${item.platform || '라이브'}</span>
+          <span class="date-tag">${dDayLabel} · ${dt.month}/${dt.day} ${dt.time}</span>
+        </div>
         <div class="title">${item.title}</div>
         ${benefitKeyFor(item) ? `<div class="main-product" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>` : ''}
       </div>
@@ -2448,14 +2439,11 @@ function pastCard(item) {
       </div>` : '';
   return `
     <a class="card past" href="${item.url}" target="_blank" rel="noopener">
-      <div class="date-col">
-        <div class="date-month">${ago}일 전</div>
-        <div class="date-day">${dt.month}/${dt.day}</div>
-        <div class="date-time">${dt.time}</div>
-      </div>
-      <div class="vline"></div>
       <div class="info">
-        <span class="platform">${item.platform}</span>
+        <div class="info-top">
+          <span class="platform">${item.platform}</span>
+          <span class="date-tag">${ago}일 전 · ${dt.month}/${dt.day} ${dt.time}</span>
+        </div>
         <div class="title">${item.title}</div>
         ${benefitKeyFor(item) ? `<div class="main-product" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>` : ''}
       </div>
@@ -2569,12 +2557,18 @@ async function loadJudgement(upcoming, past, myEpoch, naverPricePromise) {
   if (myEpoch !== searchEpoch) return; // 그 사이 다른 키워드로 새 검색이 시작됨
 
   const naverItem = naverItems && naverItems[0];
-  if (!naverItem || !(naverItem.lowestPrice > 0)) return; // 네이버 상품 데이터 없음 → 기존 텍스트 유지
+  if (!naverItem || !(naverItem.lowestPrice > 0)) {
+    verdictEl.classList.add('show'); // 가격 데이터 없음 → 타이밍 문구만으로 카드 표시
+    return;
+  }
   const currentPrice = naverItem.lowestPrice;
 
   const items = [...upcoming, ...past];
   const urls = [...new Set(items.map(benefitKeyFor).filter(Boolean))];
-  if (!urls.length) return;
+  if (!urls.length) {
+    verdictEl.classList.add('show'); // 방송 URL 없음 → 타이밍 문구만으로 카드 표시
+    return;
+  }
 
   let benefits = {};
   try {
@@ -2582,9 +2576,10 @@ async function loadJudgement(upcoming, past, myEpoch, naverPricePromise) {
     const data = await r.json();
     benefits = data.benefits || {};
   } catch (e) {
+    verdictEl.classList.add('show'); // 혜택 API 실패 → 타이밍 문구만으로 카드 표시
     return;
   }
-  if (myEpoch !== searchEpoch) return;
+  if (myEpoch !== searchEpoch) return; // 새 검색이 시작됐으면 표시하지 않음
 
   // 방송의 1번(대표) 상품만 기준으로 삼는다 - 카드에 보여주는 대표 상품과 통일
   const mainProduct = (item) => {
@@ -2610,6 +2605,7 @@ async function loadJudgement(upcoming, past, myEpoch, naverPricePromise) {
       productEl.textContent = `🛍️ ${productName} 기준 · 현재 최저가 ${fmt(currentPrice)}`;
       productEl.style.display = '';
     }
+    verdictEl.classList.add('show');
     return;
   }
 
@@ -2619,7 +2615,10 @@ async function loadJudgement(upcoming, past, myEpoch, naverPricePromise) {
     ? Math.round(pastMains.reduce((a, b) => a + b.price, 0) / pastMains.length)
     : null;
   const broadcastPrice = npNext ? npNext.price : pastAvg;
-  if (broadcastPrice === null) return; // 방송 예상가를 추정할 데이터가 아직 없음 → 기존 텍스트 유지
+  if (broadcastPrice === null) {
+    verdictEl.classList.add('show'); // 예상가 데이터 없음 → 타이밍 문구만으로 카드 표시
+    return;
+  }
 
   const days = Math.max(0, daysFromNow(parseLabangDate(nextBcast.start)));
   const savings = currentPrice - broadcastPrice;
@@ -2667,6 +2666,9 @@ async function loadJudgement(upcoming, past, myEpoch, naverPricePromise) {
     document.getElementById('verdictPriceEst').textContent = fmt(broadcastPrice);
     document.getElementById('verdictPriceRow').style.display = 'flex';
   }
+
+  // 모든 데이터가 채워진 뒤 카드를 한 번에 등장 — 깜빡임 없이 완성된 상태로 보인다
+  verdictEl.classList.add('show');
 }
 
 // 예정 방송을 먼저 보여준 뒤 지난 방송을 나중에 이어붙이는 구조라, 그 사이에
@@ -2700,7 +2702,8 @@ async function doSearch() {
     if (verdict) {
       verdictTitle.textContent = verdict.title;
       verdictText.innerHTML = formatVerdictBody(verdict.body);
-      verdictEl.classList.add('show');
+      // show는 loadJudgement가 가격 데이터까지 채운 뒤 한 번만 — 여기서 add('show')하면
+      // 타이밍 문구가 먼저 보였다가 가격 문구로 교체될 때 깜빡임이 생긴다
     } else {
       verdictEl.classList.remove('show');
     }
