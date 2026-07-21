@@ -1,4 +1,6 @@
 import { kv } from '@vercel/kv';
+import { waitUntil } from '@vercel/functions';
+import { getSupabase, saveBroadcasts, tsToKstLocal, escapeLike } from '../lib/supabase.js';
 
 // 캐시 미스 시 60개 날짜를 병렬 호출하는데, 응답이 느려지는 상황에서 Vercel
 // 기본 타임아웃에 걸리지 않도록 여유를 둔다
@@ -44,6 +46,40 @@ export default async function handler(req, res) {
     const cached = await kv.get(cacheKey);
     if (cached) {
       return res.status(200).json({ ...cached, cached: true });
+    }
+  } catch (e) {}
+
+  // 1순위: Supabase에 쌓아둔 자체 방송 데이터에서 검색 (라방바 의존도 축소).
+  // 여기서 찾으면 라방바 60일치 호출 없이 즉시 반환한다.
+  // 실패하거나 결과가 없으면 아래 라방바 폴백으로 그대로 진행.
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      let query = supabase
+        .from('broadcasts')
+        .select('labang_id,title,platform,start_at,end_at,url')
+        .lt('start_at', new Date().toISOString()) // 이미 시작(방영)된 방송만 = 과거 방송
+        .order('start_at', { ascending: false })
+        .limit(3);
+      for (const term of cleanKeyword.split(/\s+/).filter(Boolean)) {
+        query = query.ilike('title', '%' + escapeLike(term) + '%');
+      }
+      const { data, error } = await query;
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const past = data.map(row => ({
+          id: row.labang_id,
+          title: row.title,
+          platform: row.platform,
+          start: tsToKstLocal(row.start_at),
+          end: tsToKstLocal(row.end_at),
+          url: row.url,
+        }));
+        const responseBody = { past, total: past.length, keyword: cleanKeyword, source: 'supabase' };
+        try {
+          await kv.set(cacheKey, responseBody, { ex: 7200 });
+        } catch (e) {}
+        return res.status(200).json(responseBody);
+      }
     }
   } catch (e) {}
 
@@ -146,6 +182,12 @@ export default async function handler(req, res) {
 
     try {
       await kv.set(cacheKey, responseBody, { ex: 7200 }); // 캐시 2시간으로 연장
+    } catch (e) {}
+
+    // 라방바 폴백으로 찾은 결과는 Supabase에 적립해서 다음번 같은 키워드는
+    // Supabase에서 바로 찾도록 한다. 응답을 막지 않게 백그라운드로.
+    try {
+      waitUntil(saveBroadcasts(past, 'labangba').catch(() => {}));
     } catch (e) {}
 
     res.status(200).json(responseBody);
