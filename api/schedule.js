@@ -1,4 +1,6 @@
 import { kv } from '@vercel/kv';
+import { waitUntil } from '@vercel/functions';
+import { saveBroadcasts } from '../lib/supabase.js';
 
 // 캐시 미스 시 7개 날짜를 병렬 호출하는데, 응답이 느려지는 상황에서 Vercel
 // 기본 타임아웃에 걸리지 않도록 여유를 둔다
@@ -134,6 +136,12 @@ export default async function handler(req, res) {
 
     try {
       await kv.set(cacheKey, responseBody, { ex: 7200 }); // 캐시 2시간으로 연장
+    } catch (e) {}
+
+    // 크롤링한 방송을 Supabase에도 누적 저장 - 방송이 끝난 뒤엔 과거 방송 검색
+    // (/api/search)의 1순위 데이터가 된다. 응답을 막지 않도록 백그라운드로.
+    try {
+      waitUntil(saveBroadcasts(upcoming, 'labangba').catch(() => {}));
     } catch (e) {}
 
     res.status(200).json(responseBody);

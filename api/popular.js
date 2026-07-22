@@ -39,7 +39,7 @@ export default async function handler(req, res) {
 
     const top = Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 4)
+      .slice(0, 10)
       .map(([keyword, count]) => ({ keyword, count }));
 
     res.status(200).json({ top });

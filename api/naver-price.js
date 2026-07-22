@@ -39,7 +39,15 @@ export default async function handler(req, res) {
 
   try {
     const cached = await kv.get(cacheKey);
-    if (cached) return res.status(200).json({ ...cached, cached: true });
+    // 캐시엔 items만 저장하고 affiliate id는 매번 최신 환경변수 값을 얹는다 -
+    // 환경변수가 바뀌어도 캐시가 살아있는 1시간 동안 옛 값이 굳어버리지 않도록
+    if (cached) {
+      return res.status(200).json({
+        ...cached,
+        coupangAffiliateId: process.env.COUPANG_AFFILIATE_ID || '',
+        cached: true,
+      });
+    }
   } catch (e) {}
 
   const clientId = process.env.NAVER_CLIENT_ID;
@@ -86,9 +94,16 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'no results found', keyword: cleanKeyword });
     }
 
-    const responseBody = { keyword: cleanKeyword, items };
+    // 쿠팡 제휴 ID는 서버 환경변수에만 있고 정적 파일인 index.html에서는 직접
+    // 읽을 수 없다 - 이미 호출하는 이 응답에 실어 보내 프론트가 쿠팡 링크를
+    // 만들 때 쓰게 한다. 캐시된 응답에도 매번 최신 값을 얹어 반환한다
+    const responseBody = {
+      keyword: cleanKeyword,
+      items,
+      coupangAffiliateId: process.env.COUPANG_AFFILIATE_ID || '',
+    };
     try {
-      await kv.set(cacheKey, responseBody, { ex: CACHE_TTL });
+      await kv.set(cacheKey, { keyword: cleanKeyword, items }, { ex: CACHE_TTL });
     } catch (e) {}
 
     res.status(200).json(responseBody);

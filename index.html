@@ -159,44 +159,54 @@ main {
   position: relative;
 }
 
-body { padding-bottom: 64px; }
+body { padding-bottom: 100px; }
 
 .bottom-nav {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
   z-index: 50;
-  max-width: 720px;
-  margin: 0 auto;
   display: flex;
-  background: rgba(255,255,255,0.62);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-top: 1.5px solid #1a1814;
-  border-left: 1.5px solid #1a1814;
-  border-right: 1.5px solid #1a1814;
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  width: max-content;
+  background: rgba(255,255,255,0.42);
+  backdrop-filter: blur(48px) saturate(200%) brightness(1.06);
+  -webkit-backdrop-filter: blur(48px) saturate(200%) brightness(1.06);
+  border: none;
+  border-radius: 9999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    0 4px 24px rgba(0,0,0,0.12),
+    0 1px 6px rgba(0,0,0,0.07);
+  overflow: hidden;
+}
+.bottom-nav::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 55%);
+  pointer-events: none;
+  z-index: 0;
 }
 .bottom-nav-item {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  padding: 8px 0 6px;
+  padding: 10px 22px 8px;
   background: none;
   border: none;
   cursor: pointer;
   color: var(--ash);
   font-family: inherit;
+  position: relative;
+  z-index: 1;
 }
-.bottom-nav-icon { width: 20px; height: 20px; fill: currentColor; opacity: 0.55; }
-.bottom-nav-label { font-size: 11px; font-weight: 700; }
-.bottom-nav-item.active { color: var(--primary-deep); }
+.bottom-nav-icon { width: 20px; height: 20px; fill: currentColor; opacity: 0.5; }
+.bottom-nav-label { font-size: 11px; font-weight: 600; }
+.bottom-nav-item.active { color: var(--primary); }
 .bottom-nav-item.active .bottom-nav-icon { opacity: 1; }
 
 .tab-page-header {
@@ -366,7 +376,7 @@ body { padding-bottom: 64px; }
 .search-wrap button:active { transform: scale(0.94) rotate(-1deg); }
 .search-wrap button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.chips { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.chips { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
 .chip {
   font-size: 13px;
   font-weight: 600;
@@ -381,7 +391,47 @@ body { padding-bottom: 64px; }
 }
 .chip:hover { background: var(--hairline); }
 
-.price-row { display: flex; gap: 10px; margin-bottom: 1.5rem; }
+/* ── 인기/최근 검색어 섹션 ── */
+.kw-section { margin-top: 14px; }
+.kw-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.kw-label { font-size: 11px; font-weight: 700; color: var(--mute); letter-spacing: 0.04em; }
+.kw-toggle {
+  font-size: 11px; font-weight: 700; color: var(--primary);
+  background: none; border: none; cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; gap: 3px; padding: 0;
+}
+
+/* 티커 (한 줄 슬라이드) */
+.pop-ticker {
+  display: flex; align-items: center; gap: 10px;
+  padding: 4px 0;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.tick-rank {
+  font-size: 12px; font-weight: 800; color: var(--primary);
+  min-width: 28px; flex-shrink: 0;
+}
+.tick-word {
+  font-size: 14px; font-weight: 700; color: var(--ink);
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; padding: 0; text-align: left;
+}
+.tick-word:hover { color: var(--primary); }
+
+/* 펼친 목록 */
+.pop-list { display: flex; flex-direction: column; gap: 0; margin-top: 4px; }
+.pop-list-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--hairline);
+  cursor: pointer; background: none; border-left: none; border-right: none; border-top: none;
+  font-family: inherit; width: 100%; text-align: left;
+}
+.pop-list-item:last-child { border-bottom: none; }
+.pop-list-item:hover .pop-item-kw { color: var(--primary); }
+.pop-item-rank { font-size: 12px; font-weight: 800; color: var(--primary); min-width: 28px; }
+.pop-item-kw { font-size: 13px; font-weight: 600; color: var(--ink); }
+
 @media (max-width: 640px) {
   .brand-title img { width: 252px; }
   h1 { font-size: 22px; }
@@ -397,77 +447,53 @@ body { padding-bottom: 64px; }
     line-height: normal !important;
   }
   .search-wrap button { width: 100%; height: 58px; margin-top: 8px; font-size: 15px; }
-  .price-row { gap: 8px; }
-  .price-link { font-size: 11px; padding: 6px 6px; gap: 2px; height: 58px; }
-  .price-link .brand-logo { width: 16px; height: 16px; }
-  .price-link .coupang-logo { width: auto; height: 13px; padding: 2px 5px; }
-}
-.price-link {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  flex: 1 1 0;
-  min-width: 0;
-  height: 64px;
-  padding: 8px 10px;
-  border-radius: 20px;
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 700;
-  position: relative;
-  z-index: 1;
-  white-space: nowrap;
-  box-sizing: border-box;
-}
-.price-link .price-link-text { line-height: 1.1; }
-.price-link.coupang { background: #1a73e8; color: #fff; }
-.price-link.coupang:hover { background: #1559b5; }
-.price-link.naver { background: #03c75a; color: #fff; }
-.price-link.naver:hover { background: #02a64a; }
-.price-link .arrow { font-weight: 800; }
-.price-link .brand-logo { flex-shrink: 0; }
-.price-link .coupang-logo {
-  width: auto;
-  height: 16px;
-  background: #fff;
-  border-radius: 4px;
-  padding: 2px 6px;
-  object-fit: contain;
 }
 
 .verdict {
-  background: #fff8e8;
-  border-radius: 28px;
-  padding: 28px 30px 26px;
+  background: linear-gradient(150deg, #fff5f3 0%, #fffcfb 55%, #fff 100%);
+  border-radius: 24px;
+  padding: 24px 26px 22px;
   margin-bottom: 1.5rem;
   margin-top: 28px;
   display: none;
   position: relative;
   z-index: 1;
-  border: 3px solid #2d2a26;
-  box-shadow: 3px 3px 0 #2d2a26;
+  border: 1.5px solid rgba(234,40,4,0.18);
+  box-shadow:
+    0 0 0 4px rgba(234,40,4,0.05),
+    0 8px 32px rgba(234,40,4,0.12),
+    0 2px 8px rgba(0,0,0,0.05);
 }
-.verdict.show { display: block; }
+@keyframes verdictIn {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+.verdict.show {
+  display: block;
+  animation: verdictIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
 .verdict-tail {
   position: absolute;
-  top: -22px;
-  left: 32px;
-  width: 56px;
-  height: 30px;
+  top: -14px;
+  left: 28px;
+  width: 40px;
+  height: 18px;
   background: var(--primary);
-  border: 3px solid #2d2a26;
-  border-radius: 16px;
-  border-bottom: none;
-  clip-path: inset(0 0 10px 0);
+  border-radius: 9999px 9999px 0 0;
+  box-shadow: 0 -2px 8px rgba(234,40,4,0.2);
 }
 .verdict-label {
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(234,40,4,0.1);
+  color: var(--primary);
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.04em;
-  color: var(--primary-deep);
-  margin-bottom: 10px;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  margin-bottom: 12px;
 }
 .verdict-title {
   font-size: 24px;
@@ -484,43 +510,53 @@ body { padding-bottom: 64px; }
 }
 .verdict-text .highlight { color: var(--primary-deep); font-weight: 800; }
 
-.price-trend-section {
-  display: none;
-  margin-top: 1.25rem;
-  position: relative;
-  z-index: 1;
+.verdict-savings {
+  font-size: 15px;
+  font-weight: 800;
+  color: #1a8a4a;
+  margin-top: 2px;
+  margin-bottom: 6px;
 }
-.price-trend-section.show { display: block; }
-.price-trend-section .section-header { margin-bottom: 10px; }
-.price-trend-stats {
-  background: var(--card);
-  border: 1.5px solid #1a1814;
-  box-shadow: 2px 2px 0 #1a1814;
-  border-radius: 12px;
-  padding: 14px;
-}
-.price-trend-row {
-  display: flex;
-  justify-content: space-around;
-  text-align: center;
-}
-.price-trend-stat { display: flex; flex-direction: column; gap: 4px; }
-.price-trend-label { font-size: 11px; color: var(--mute); font-weight: 600; }
-.price-trend-value { font-size: 15px; font-weight: 800; }
-.price-trend-value.low { color: var(--primary-deep); }
-.price-trend-next {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--hairline);
+.verdict-benefit {
   font-size: 13px;
   font-weight: 700;
-  text-align: center;
+  color: var(--primary-deep);
+  margin-bottom: 6px;
 }
-.price-trend-note {
-  margin-top: 6px;
-  font-size: 11px;
+.verdict-product {
+  font-size: 12px;
+  font-weight: 600;
   color: var(--mute);
-  text-align: center;
+  margin-top: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.verdict-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--hairline);
+}
+.verdict-price-now {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mute);
+  text-decoration: line-through;
+}
+.verdict-price-arrow { font-size: 15px; font-weight: 800; color: var(--mute); }
+.verdict-price-est {
+  font-size: 19px;
+  font-weight: 800;
+  color: #d92c2c;
+}
+.verdict-broadcast-meta {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4a3520;
 }
 
 .lowest-price-section {
@@ -574,6 +610,12 @@ body { padding-bottom: 64px; }
   color: var(--primary-deep);
   white-space: nowrap;
 }
+.lowest-price-cta {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--mute);
+  white-space: nowrap;
+}
 
 @media (min-width: 768px) {
   .lowest-price-list {
@@ -585,6 +627,7 @@ body { padding-bottom: 64px; }
   .lowest-price-image { height: 96px; }
   .lowest-price-name { font-size: 12px; }
   .lowest-price-value { font-size: 13px; }
+  .lowest-price-cta { font-size: 11px; }
 }
 
 .status {
@@ -749,6 +792,8 @@ body { padding-bottom: 64px; }
 }
 
 .vline { width: 1px; align-self: stretch; flex-shrink: 0; opacity: 0.2; background: currentColor; }
+.info-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
+.date-tag { font-size: 11px; font-weight: 700; opacity: 0.72; margin-left: auto; white-space: nowrap; }
 
 .info { flex: 1; min-width: 0; }
 .platform {
@@ -1162,11 +1207,22 @@ footer {
         <input type="text" id="input" placeholder="브랜드명 혹은 제품명을 입력해보세요!" />
         <button id="btn" onclick="handleSearchClick()">찾아볼게요 🔍</button>
       </div>
-      <div class="chips" id="chips">
-        <button class="chip" onclick="quickSearch('아토팜')">아토팜</button>
-        <button class="chip" onclick="quickSearch('로보락')">로보락</button>
-        <button class="chip" onclick="quickSearch('달바')">달바</button>
-        <button class="chip" onclick="quickSearch('크록스')">크록스</button>
+      <!-- 최근 검색어 (우선) -->
+      <div class="kw-section" id="recentSection" style="display:none">
+        <div class="kw-label">최근 검색어</div>
+        <div class="chips" id="chips"></div>
+      </div>
+      <!-- 인기 검색어 (최근 없을 때) -->
+      <div class="kw-section" id="popularSection" style="display:none">
+        <div class="kw-header">
+          <span class="kw-label">인기검색어</span>
+          <button class="kw-toggle" id="kwToggle" onclick="togglePopular()">펼치기 ▾</button>
+        </div>
+        <div class="pop-ticker" id="popTicker">
+          <span class="tick-rank" id="tickerRank">1위</span>
+          <button class="tick-word" id="tickerWord" onclick="searchFromTicker()"></button>
+        </div>
+        <div class="pop-list" id="popList" style="display:none"></div>
       </div>
     </div>
   </div>
@@ -1181,31 +1237,18 @@ footer {
 
   <div class="verdict" id="verdict">
     <div class="verdict-tail"></div>
-    <div class="verdict-label">💬 타이밍 분석</div>
+    <div class="verdict-label">✋ 잠깐!</div>
     <div class="verdict-title" id="verdictTitle"></div>
     <div class="verdict-text" id="verdictText"></div>
-  </div>
-
-  <div class="price-trend-section" id="priceTrendSection">
-    <div class="section-header">
-      <div class="section-dot dot-price"></div>
-      <div class="section-title">라이브 방송 가격대는 이래요</div>
+    <div class="verdict-broadcast-meta" id="verdictBroadcastMeta" style="display:none"></div>
+    <div class="verdict-savings" id="verdictSavings" style="display:none"></div>
+    <div class="verdict-benefit" id="verdictBenefit" style="display:none"></div>
+    <div class="verdict-product" id="verdictProduct" style="display:none"></div>
+    <div class="verdict-price-row" id="verdictPriceRow" style="display:none">
+      <span class="verdict-price-now" id="verdictPriceNow"></span>
+      <span class="verdict-price-arrow">→</span>
+      <span class="verdict-price-est" id="verdictPriceEst"></span>
     </div>
-    <div class="price-trend-stats" id="priceTrendStats"></div>
-  </div>
-
-  <div class="price-row">
-    <a id="priceBtn" class="price-link coupang" style="display:none" target="_blank" rel="noopener">
-      <img class="brand-logo coupang-logo" src="https://i.imgur.com/9NOTcxq.png" alt="쿠팡" />
-      <span class="price-link-text">쿠팡 최저가 확인하기 <span class="arrow">→</span></span>
-    </a>
-    <a id="naverBtn" class="price-link naver" style="display:none" target="_blank" rel="noopener">
-      <svg class="brand-logo" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <rect width="24" height="24" rx="5" fill="#fff"/>
-        <path d="M13.5 7V13.2L9.7 7H7V17H10.5V10.8L14.3 17H17V7H13.5Z" fill="#03c75a"/>
-      </svg>
-      <span class="price-link-text">네이버 최저가 확인하기 <span class="arrow">→</span></span>
-    </a>
   </div>
 
   <div class="lowest-price-section" id="lowestPriceSection">
@@ -1310,18 +1353,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-document.addEventListener('contextmenu', e => e.preventDefault());
-document.addEventListener('keydown', e => {
-  const blockedKeys = ['F12'];
-  const isDevToolsShortcut =
-    (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) ||
-    (e.metaKey && e.altKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) ||
-    (e.ctrlKey && e.key.toUpperCase() === 'U') ||
-    (e.metaKey && e.altKey && e.key.toUpperCase() === 'U') ||
-    blockedKeys.includes(e.key);
-  if (isDevToolsShortcut) e.preventDefault();
-});
-
 const todayDateEl = document.getElementById('todayDate');
 if (todayDateEl) {
   const today = new Date();
@@ -1370,12 +1401,21 @@ function goHome() {
   input.value = '';
   statusEl.innerHTML = '';
   verdictEl.classList.remove('show');
+  hideVerdictPriceParts();
   stopLoadingAnimation();
   resultEl.innerHTML = '<div class="empty">🔍 브랜드명을 검색하면<br>예정 방송과 과거 방송을 함께 보여드려요</div>';
-  document.getElementById('priceBtn').style.display = 'none';
-  document.getElementById('naverBtn').style.display = 'none';
   document.getElementById('lowestPriceSection').classList.remove('show');
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// 판결 카드의 가격 비교 파트(절약/상품기준/가격행/방송메타)는 makeVerdict의
+// 기본 문구와 달리 네이버가격+혜택가격이 둘 다 도착해야 채워지는 비동기 데이터라
+// 새 검색을 시작할 때마다 반드시 먼저 숨겨야 이전 키워드의 가격이 잠깐이라도
+// 새 결과 위에 남아있지 않는다
+function hideVerdictPriceParts() {
+  ['verdictSavings', 'verdictBenefit', 'verdictProduct', 'verdictPriceRow', 'verdictBroadcastMeta'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
 }
 
 function switchView(view) {
@@ -1506,14 +1546,11 @@ async function loadMyPage() {
       const dt = fmtDate(new Date(r.startAt));
       return `
       <a class="card urgency-3" href="${escapeAttr(r.url || '#')}" target="_blank" rel="noopener">
-        <div class="date-col">
-          <div class="date-month">🔔</div>
-          <div class="date-day">${dt.month}/${dt.day}</div>
-          <div class="date-time">${dt.time}</div>
-        </div>
-        <div class="vline"></div>
         <div class="info">
-          <span class="platform">${escapeAttr(r.platform || '')}</span>
+          <div class="info-top">
+            <span class="platform">${escapeAttr(r.platform || '')}</span>
+            <span class="date-tag">🔔 ${dt.month}/${dt.day} ${dt.time}</span>
+          </div>
           <div class="title">${escapeAttr(r.title || '')}</div>
         </div>
       </a>`;
@@ -1557,14 +1594,11 @@ async function loadMyPage() {
       const likeId = item.id || '';
       return `
       <a class="card ${urgency}" href="${escapeAttr(item.url || '#')}" target="_blank" rel="noopener">
-        <div class="date-col">
-          <div class="date-month">${dDayLabel}</div>
-          <div class="date-day">${dt.month}/${dt.day}</div>
-          <div class="date-time">${dt.time}</div>
-        </div>
-        <div class="vline"></div>
         <div class="info">
-          <span class="platform">${escapeAttr(item.platform || '')}</span>
+          <div class="info-top">
+            <span class="platform">${escapeAttr(item.platform || '')}</span>
+            <span class="date-tag">${dDayLabel} · ${dt.month}/${dt.day} ${dt.time}</span>
+          </div>
           <div class="title">${escapeAttr(item.title || '')}</div>
         </div>
         ${likeId ? `
@@ -1638,22 +1672,98 @@ function renderChips(keywords) {
   ).join('');
 }
 
+// ── 인기검색어 티커 ──
+let _popularItems = [];
+let _tickerIdx = 0;
+let _tickerTimer = null;
+let _popularExpanded = false;
+
+function searchFromTicker() {
+  const kw = _popularItems[_tickerIdx]?.keyword;
+  if (kw) quickSearch(kw);
+}
+
+function _updateTicker(animate) {
+  const ticker = document.getElementById('popTicker');
+  const rankEl = document.getElementById('tickerRank');
+  const wordEl = document.getElementById('tickerWord');
+  if (!ticker || !rankEl || !wordEl || !_popularItems.length) return;
+  if (animate) {
+    ticker.style.opacity = '0';
+    ticker.style.transform = 'translateY(5px)';
+    setTimeout(() => {
+      rankEl.textContent = _tickerIdx + 1 + '위';
+      wordEl.textContent = _popularItems[_tickerIdx].keyword;
+      ticker.style.opacity = '1';
+      ticker.style.transform = 'translateY(0)';
+    }, 180);
+  } else {
+    rankEl.textContent = _tickerIdx + 1 + '위';
+    wordEl.textContent = _popularItems[_tickerIdx].keyword;
+  }
+}
+
+function _startTicker() {
+  _updateTicker(false);
+  _tickerTimer = setInterval(() => {
+    _tickerIdx = (_tickerIdx + 1) % _popularItems.length;
+    _updateTicker(true);
+  }, 2500);
+}
+
+function _stopTicker() {
+  if (_tickerTimer) { clearInterval(_tickerTimer); _tickerTimer = null; }
+}
+
+function togglePopular() {
+  const btn = document.getElementById('kwToggle');
+  const ticker = document.getElementById('popTicker');
+  const list = document.getElementById('popList');
+  _popularExpanded = !_popularExpanded;
+  if (_popularExpanded) {
+    _stopTicker();
+    ticker.style.display = 'none';
+    list.style.display = 'flex';
+    btn.textContent = '접기 ▴';
+  } else {
+    list.style.display = 'none';
+    ticker.style.display = 'flex';
+    btn.textContent = '펼치기 ▾';
+    _startTicker();
+  }
+}
+
+function _showPopular(items) {
+  _popularItems = items;
+  _tickerIdx = 0;
+  _popularExpanded = false;
+  document.getElementById('popularSection').style.display = '';
+  // 펼친 목록 렌더링
+  const listEl = document.getElementById('popList');
+  listEl.innerHTML = items.map((item, i) =>
+    `<button class="pop-list-item" onclick="quickSearch('${escapeAttr(item.keyword)}')">
+      <span class="pop-item-rank">${i + 1}위</span>
+      <span class="pop-item-kw">${escapeAttr(item.keyword)}</span>
+    </button>`
+  ).join('');
+  _startTicker();
+}
+
 async function loadChips() {
   const recent = getRecentKeywords();
   if (recent.length > 0) {
+    document.getElementById('recentSection').style.display = '';
     renderChips(recent);
     return;
   }
   try {
     const r = await fetch('/api/popular');
     const data = await r.json();
-    const top = (data.top || []).map(item => item.keyword);
-    if (top.length > 0) {
-      renderChips(top);
+    const items = (data.top || []).filter(i => i.keyword);
+    if (items.length > 0) {
+      _showPopular(items);
     }
-  } catch (e) {
-    // 실패 시 기본 칩(아토팜/로보락/달바/크록스) 유지
-  }
+  } catch (e) {}
 }
 
 loadChips();
@@ -2302,14 +2412,11 @@ function upcomingCard(item, idx) {
 
   return `
     <a class="card ${urgency}" href="${item.url || '#'}" target="_blank" rel="noopener" onclick="return handleCardClick(event, ${idx})">
-      <div class="date-col">
-        <div class="date-month">${dDayLabel}</div>
-        <div class="date-day">${dt.month}/${dt.day}</div>
-        <div class="date-time">${dt.time}</div>
-      </div>
-      <div class="vline"></div>
       <div class="info">
-        <span class="platform">${item.platform || '라이브'}</span>
+        <div class="info-top">
+          <span class="platform">${item.platform || '라이브'}</span>
+          <span class="date-tag">${dDayLabel} · ${dt.month}/${dt.day} ${dt.time}</span>
+        </div>
         <div class="title">${item.title}</div>
         ${benefitKeyFor(item) ? `<div class="main-product" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>` : ''}
       </div>
@@ -2332,14 +2439,11 @@ function pastCard(item) {
       </div>` : '';
   return `
     <a class="card past" href="${item.url}" target="_blank" rel="noopener">
-      <div class="date-col">
-        <div class="date-month">${ago}일 전</div>
-        <div class="date-day">${dt.month}/${dt.day}</div>
-        <div class="date-time">${dt.time}</div>
-      </div>
-      <div class="vline"></div>
       <div class="info">
-        <span class="platform">${item.platform}</span>
+        <div class="info-top">
+          <span class="platform">${item.platform}</span>
+          <span class="date-tag">${ago}일 전 · ${dt.month}/${dt.day} ${dt.time}</span>
+        </div>
         <div class="title">${item.title}</div>
         ${benefitKeyFor(item) ? `<div class="main-product" data-benefit-url="${escapeAttr(benefitKeyFor(item))}" style="display:none"></div>` : ''}
       </div>
@@ -2409,86 +2513,162 @@ function makeVerdict(upcoming, past) {
   }
 }
 
+// 반환값(items)을 doSearch가 받아 판결 카드(loadJudgement)의 "현재가" 기준으로도
+// 재사용한다 - 같은 키워드로 네이버 API를 두 번 부르지 않기 위함
 async function loadLowestPrice(keyword) {
   const section = document.getElementById('lowestPriceSection');
   const listEl = document.getElementById('lowestPriceList');
   try {
     const r = await fetch(`/api/naver-price?keyword=${encodeURIComponent(keyword)}`);
-    if (!r.ok) return;
+    if (!r.ok) return null;
     const data = await r.json();
     const isDesktop = window.matchMedia('(min-width: 768px)').matches;
     const items = (data.items || []).slice(0, isDesktop ? 5 : 3);
-    if (!items.length) return;
+    if (!items.length) return null;
 
-    listEl.innerHTML = items.map(item => `
-      <a class="lowest-price-card" href="${escapeAttr(item.productUrl || '#')}" target="_blank" rel="noopener">
+    const affiliateId = data.coupangAffiliateId || '';
+    listEl.innerHTML = items.map(item => {
+      const coupangUrl = 'https://www.coupang.com/np/search?q=' + encodeURIComponent(item.productName || keyword) +
+        (affiliateId ? '&affiliate=' + encodeURIComponent(affiliateId) : '');
+      return `
+      <a class="lowest-price-card" href="${escapeAttr(coupangUrl)}" target="_blank" rel="noopener">
         <img class="lowest-price-image" src="${escapeAttr(item.image || '')}" alt="" loading="lazy" />
         <div class="lowest-price-name">${escapeAttr(item.productName || '')}</div>
         <div class="lowest-price-value">${item.lowestPrice ? Number(item.lowestPrice).toLocaleString('ko-KR') + '원' : ''}</div>
-      </a>`).join('');
+        <div class="lowest-price-cta">쿠팡에서 찾아보기 →</div>
+      </a>`;
+    }).join('');
     section.classList.add('show');
+    return items;
   } catch (e) {
     // 실패 시 조용히 숨김 유지
+    return null;
   }
 }
 
-// "지금 검색한 브랜드(제품)의 최저가"(loadLowestPrice)는 네이버쇼핑 전체에서
-// 지금 이 순간 가장 싼 곳 하나를 보여주는 것이고, 이건 그거랑 다르게 "라이브
-// 방송에서는 보통 얼마에 풀렸는지"를 보여준다 - 지난 방송들의 상품 가격을 모아
-// 최저/평균/최고를 계산하고, 다음 예정 방송에 이미 가격이 올라와 있으면 그것도
-// 같이 보여준다. 데이터가 익스텐션이 방문한 방송에만 쌓이는 구조라 최소 2개
-// 이상 모였을 때만 보여준다 (1개뿐이면 "최저=평균=최고"라 보여줄 의미가 없음)
-async function loadPriceTrend(upcoming, past, isRetry) {
-  const section = document.getElementById('priceTrendSection');
-  const statsEl = document.getElementById('priceTrendStats');
+// 판결 카드는 두 갈래 데이터가 합쳐져야 완성된다: ① 네이버쇼핑 "현재가"
+// (naverProducts[0], loadLowestPrice가 이미 받아온 값을 재사용) ② 라이브 방송
+// "방송 예상가" - 다음 방송 자체에 이미 뜬 1번(대표) 상품가, 없으면 최근 방송들의
+// 1번 상품 평균가로 대체. 판결 카드 자체(제목/본문)는 render()가 makeVerdict로
+// 이미 그려놨고, 이 함수는 그 위에 가격 비교 파트만 도착하는 대로 "덧붙인다".
+// 둘 중 하나라도 없으면 기존 타이밍 문구를 그대로 두고 조용히 끝낸다
+async function loadJudgement(upcoming, past, myEpoch, naverPricePromise) {
+  const naverItems = await naverPricePromise;
+  if (myEpoch !== searchEpoch) return; // 그 사이 다른 키워드로 새 검색이 시작됨
+
+  const naverItem = naverItems && naverItems[0];
+  if (!naverItem || !(naverItem.lowestPrice > 0)) {
+    verdictEl.classList.add('show'); // 가격 데이터 없음 → 타이밍 문구만으로 카드 표시
+    return;
+  }
+  const currentPrice = naverItem.lowestPrice;
+
   const items = [...upcoming, ...past];
   const urls = [...new Set(items.map(benefitKeyFor).filter(Boolean))];
-  if (!urls.length) { section.classList.remove('show'); return; }
+  if (!urls.length) {
+    verdictEl.classList.add('show'); // 방송 URL 없음 → 타이밍 문구만으로 카드 표시
+    return;
+  }
 
+  let benefits = {};
   try {
     const r = await fetch('/api/benefit?ids=' + encodeURIComponent(urls.join(',')));
     const data = await r.json();
-    const benefits = data.benefits || {};
-
-    const cheapestPrice = (item) => {
-      const products = benefits[benefitKeyFor(item)]?.products || [];
-      const prices = products.map(p => p.price).filter(p => typeof p === 'number' && p > 0);
-      return prices.length ? Math.min(...prices) : null;
-    };
-
-    const pastPrices = past.map(cheapestPrice).filter(p => p !== null);
-    if (pastPrices.length < 2) {
-      section.classList.remove('show');
-      // 처음 보는 방송들이면 방금 요청에서 서버가 백그라운드로 막 채우기 시작했을
-      // 수 있다 - 혜택 뱃지처럼 딱 한 번만 잠깐 기다렸다 다시 계산해본다
-      if (!isRetry) setTimeout(() => loadPriceTrend(upcoming, past, true), 4000);
-      return;
-    }
-
-    const min = Math.min(...pastPrices);
-    const max = Math.max(...pastPrices);
-    const avg = Math.round(pastPrices.reduce((a, b) => a + b, 0) / pastPrices.length);
-    const fmt = (n) => n.toLocaleString('ko-KR') + '원';
-
-    let html = `
-      <div class="price-trend-row">
-        <div class="price-trend-stat"><div class="price-trend-label">최저</div><div class="price-trend-value low">${fmt(min)}</div></div>
-        <div class="price-trend-stat"><div class="price-trend-label">평균</div><div class="price-trend-value">${fmt(avg)}</div></div>
-        <div class="price-trend-stat"><div class="price-trend-label">최고</div><div class="price-trend-value">${fmt(max)}</div></div>
-      </div>`;
-
-    const nextItem = upcoming.find(item => cheapestPrice(item) !== null);
-    if (nextItem) {
-      const dt = fmtDate(parseLabangDate(nextItem.start));
-      html += `<div class="price-trend-next">다음 방송(${dt.month}/${dt.day}) 예상가 ${fmt(cheapestPrice(nextItem))}</div>`;
-    }
-    html += `<div class="price-trend-note">최근 ${pastPrices.length}회 라이브 방송 기준</div>`;
-
-    statsEl.innerHTML = html;
-    section.classList.add('show');
+    benefits = data.benefits || {};
   } catch (e) {
-    section.classList.remove('show');
+    verdictEl.classList.add('show'); // 혜택 API 실패 → 타이밍 문구만으로 카드 표시
+    return;
   }
+  if (myEpoch !== searchEpoch) return; // 새 검색이 시작됐으면 표시하지 않음
+
+  // 방송의 1번(대표) 상품만 기준으로 삼는다 - 카드에 보여주는 대표 상품과 통일
+  const mainProduct = (item) => {
+    const top = (benefits[benefitKeyFor(item)]?.products || [])[0];
+    return (top && typeof top.price === 'number' && top.price > 0) ? top : null;
+  };
+
+  const fmt = (n) => Math.round(n).toLocaleString('ko-KR') + '원';
+  const rawName = naverItem.productName || '';
+  const productName = rawName.length > 20 ? rawName.slice(0, 20) + '…' : rawName;
+
+  const nextBcast = upcoming.find(u => {
+    const end = parseLabangDate(u.end);
+    return !end || end >= new Date();
+  }) || upcoming[0];
+
+  if (!nextBcast) {
+    // 예정 방송이 없으면 "방송 예상가"라는 비교 대상 자체가 없다
+    verdictTitle.textContent = '지금 최저가로 구매하세요!';
+    verdictText.innerHTML = '';
+    if (productName) {
+      const productEl = document.getElementById('verdictProduct');
+      productEl.textContent = `🛍️ ${productName} 기준 · 현재 최저가 ${fmt(currentPrice)}`;
+      productEl.style.display = '';
+    }
+    verdictEl.classList.add('show');
+    return;
+  }
+
+  const npNext = mainProduct(nextBcast);
+  const pastMains = past.map(mainProduct).filter(Boolean);
+  const pastAvg = pastMains.length
+    ? Math.round(pastMains.reduce((a, b) => a + b.price, 0) / pastMains.length)
+    : null;
+  const broadcastPrice = npNext ? npNext.price : pastAvg;
+  if (broadcastPrice === null) {
+    verdictEl.classList.add('show'); // 예상가 데이터 없음 → 타이밍 문구만으로 카드 표시
+    return;
+  }
+
+  const days = Math.max(0, daysFromNow(parseLabangDate(nextBcast.start)));
+  const savings = currentPrice - broadcastPrice;
+
+  if (broadcastPrice < currentPrice) {
+    verdictTitle.textContent = days === 0 ? '오늘 방송 후 사세요!'
+      : days === 1 ? '내일 라이브 방송이 있어요!'
+      : `${days}일 후 라이브 방송이 있어요!`;
+  } else {
+    verdictTitle.textContent = '지금 사도 괜찮아요!';
+  }
+  verdictText.innerHTML = '';
+
+  // 방송 일시/플랫폼 — 판결 문구 바로 아래
+  const dt = fmtDate(parseLabangDate(nextBcast.start));
+  const metaEl = document.getElementById('verdictBroadcastMeta');
+  metaEl.textContent = `📺 ${dt.month}/${dt.day} ${nextBcast.platform} · D-${days}`;
+  metaEl.style.display = '';
+
+  // 다음 방송 혜택(할인/쿠폰/사은품)
+  const nextBenefitKey = benefitKeyFor(nextBcast);
+  const nextParsed = nextBenefitKey && benefits[nextBenefitKey]?.parsed;
+  if (nextParsed) {
+    const parts = [];
+    if (nextParsed.discount) parts.push(`${nextParsed.discount} 할인`);
+    if (nextParsed.coupon) parts.push(nextParsed.coupon);
+    if (nextParsed.gift) parts.push(nextParsed.gift);
+    if (parts.length) {
+      const benefitEl = document.getElementById('verdictBenefit');
+      benefitEl.textContent = `🎁 ${parts.join(' · ')}`;
+      benefitEl.style.display = '';
+    }
+  }
+
+  if (savings > 0) {
+    const savingsEl = document.getElementById('verdictSavings');
+    savingsEl.textContent = `💰 약 ${fmt(savings)} 저렴해요`;
+    savingsEl.style.display = '';
+
+    const productEl = document.getElementById('verdictProduct');
+    productEl.textContent = `🛍️ ${productName} 기준`;
+    productEl.style.display = '';
+
+    document.getElementById('verdictPriceNow').textContent = fmt(currentPrice);
+    document.getElementById('verdictPriceEst').textContent = fmt(broadcastPrice);
+    document.getElementById('verdictPriceRow').style.display = 'flex';
+  }
+
+  // 모든 데이터가 채워진 뒤 카드를 한 번에 등장 — 깜빡임 없이 완성된 상태로 보인다
+  verdictEl.classList.add('show');
 }
 
 // 예정 방송을 먼저 보여준 뒤 지난 방송을 나중에 이어붙이는 구조라, 그 사이에
@@ -2506,22 +2686,12 @@ async function doSearch() {
 
   btn.disabled = true;
   verdictEl.classList.remove('show');
+  hideVerdictPriceParts();
   startLoadingAnimation();
-  document.getElementById('priceBtn').style.display = 'none';
-  document.getElementById('naverBtn').style.display = 'none';
   document.getElementById('lowestPriceSection').classList.remove('show');
-  document.getElementById('priceTrendSection').classList.remove('show');
   setStatus('');
 
-  loadLowestPrice(keyword);
-
-  const priceBtn = document.getElementById('priceBtn');
-  priceBtn.href = 'https://alltimeprice.com/search/?search=' + encodeURIComponent(keyword);
-  priceBtn.style.display = 'flex';
-
-  const naverBtn = document.getElementById('naverBtn');
-  naverBtn.href = 'https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=0&ie=utf8&query=' + encodeURIComponent(keyword);
-  naverBtn.style.display = 'flex';
+  const naverPricePromise = loadLowestPrice(keyword);
 
   let upcoming = [];
   let past = [];
@@ -2532,7 +2702,8 @@ async function doSearch() {
     if (verdict) {
       verdictTitle.textContent = verdict.title;
       verdictText.innerHTML = formatVerdictBody(verdict.body);
-      verdictEl.classList.add('show');
+      // show는 loadJudgement가 가격 데이터까지 채운 뒤 한 번만 — 여기서 add('show')하면
+      // 타이밍 문구가 먼저 보였다가 가격 문구로 교체될 때 깜빡임이 생긴다
     } else {
       verdictEl.classList.remove('show');
     }
@@ -2580,7 +2751,7 @@ async function doSearch() {
     // 지난 방송이 다 갖춰진 뒤(!searchPending)에만 계산한다 - 예정 방송만 있는
     // 빠른 1차 렌더에서도 매번 호출하면, 그 요청이 늦게 끝날 경우 이미 완성된
     // 2차 렌더 결과를 오래된(불완전한) 데이터로 덮어써버리는 경쟁 상태가 생긴다
-    if (!searchPending) loadPriceTrend(upcoming, past);
+    if (!searchPending) loadJudgement(upcoming, past, myEpoch, naverPricePromise);
   }
 
   try {
